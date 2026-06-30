@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="theme-color" content="#2d5631">
+  <title>SFC #3 — Peta Kavling Tenda</title>
+  <link rel="manifest" href="#" crossorigin="use-credentials">
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- QRCode -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- Distortable Image Overlay -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-distortableimage/dist/leaflet.distortableimage.css"/>
+  <script src="https://unpkg.com/leaflet-distortableimage/dist/leaflet.distortableimage.js"></script>
+  <style>
+    /* ── Design System ── */
+    :root {
+      --green:        #2d5631;
+      --green-l:      #4a7c4e;
+      --green-bg:     #e8f0e9;
+      --orange:       #c87137;
+      --orange-l:     #d9885a;
+      --orange-bg:    #fae6d5;
+      --blue:         #1a7ba8;
+      --blue-bg:      #e3f2f9;
+      --red:          #c0392b;
+      --red-bg:       #fde8e8;
+      --bg:           #f2ede4;
+      --sand:         #e4dcc8;
+      --white:        #fdf9f4;
+      --border:       #e0d8cc;
+      --text:         #2c2825;
+      --muted:        #7a7470;
+      --shadow:       0 2px 12px rgba(0,0,0,.10);
+      --radius:       10px;
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:var(--bg); color:var(--text); height:100vh; overflow:hidden; }
+
+    /* ── Loading ── */
+    #loading {
+      position:fixed; inset:0; background:var(--bg); z-index:9999;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+    }
+    #loading .spin { width:44px; height:44px; border:4px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin .7s linear infinite; }
+    #loading p { font-size:14px; color:var(--muted); }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── Header ── */
+    #hdr {
+      position:fixed; top:0; left:0; right:0; height:56px; z-index:1000;
+      background:var(--green); display:flex; align-items:center; padding:0 14px; gap:12px;
+      box-shadow:0 2px 8px rgba(0,0,0,.25);
+    }
+    .hdr-logo { width:38px; height:38px; border-radius:50%; background:var(--white); display:flex; align-items:center; justify-content:center; font-weight:800; color:var(--green); font-size:11px; flex-shrink:0; line-height:1.2; text-align:center; }
+    .hdr-info { flex:1; min-width:0; }
+    .hdr-name { color:#fff; font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .hdr-sub  { color:rgba(255,255,255,.65); font-size:11px; }
+
+    .mode-wrap { display:flex; gap:4px; }
+    .mode-btn  { padding:5px 10px; border-radius:6px; border:1px solid rgba(255,255,255,.3); background:transparent; color:rgba(255,255,255,.7); font-size:12px; cursor:pointer; transition:all .15s; white-space:nowrap; }
+    .mode-btn.on { background:rgba(255,255,255,.22); color:#fff; border-color:rgba(255,255,255,.6); }
+
+    /* ── Layout ── */
+    #app { display:flex; height:100vh; padding-top:56px; }
+    #map-wrap { position:relative; flex:1; }
+    #map { height:100%; width:100%; }
+
+    /* ── Left Sidebar ── */
+    #lsb {
+      width:258px; background:var(--white); border-right:1px solid var(--border);
+      display:none; flex-direction:column; overflow-y:auto; overflow-x:hidden; z-index:900;
+    }
+    #lsb.vis { display:flex; }
+
+    .sb-section { padding:12px; border-bottom:1px solid var(--border); }
+    .sb-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin-bottom:8px; }
+
+    .stats-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
+    .stat-box { background:var(--bg); border-radius:8px; padding:8px 4px; text-align:center; }
+    .stat-val { font-size:22px; font-weight:800; }
+    .stat-lbl { font-size:10px; color:var(--muted); margin-top:1px; }
+
+    .layer-item { display:flex; align-items:center; gap:7px; padding:6px 8px; border-radius:7px; background:var(--bg); margin-bottom:4px; }
+    .layer-dot { width:11px; height:11px; border-radius:2px; flex-shrink:0; }
+    .layer-lbl { font-size:12px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .lbtn { width:24px; height:24px; border:none; background:transparent; cursor:pointer; border-radius:5px; font-size:13px; display:flex; align-items:center; justify-content:center; transition:background .1s; }
+    .lbtn:hover { background:var(--sand); }
+    .lbtn.locked { color:var(--orange); }
+
+    .tool-btn { width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:12.5px; cursor:pointer; text-align:left; margin-bottom:4px; display:flex; align-items:center; gap:8px; transition:all .13s; }
+    .tool-btn:hover { background:var(--sand); }
+    .tool-btn.on { background:var(--green); color:#fff; border-color:var(--green); }
+    .tool-btn .ico { font-size:15px; width:20px; }
+    .tool-btn.danger { color:var(--red); }
+
+    .inc-card { background:var(--red-bg); border-radius:8px; padding:8px 10px; margin-bottom:6px; }
+    .inc-card.resolved { background:var(--green-bg); }
+    .inc-title { font-size:12px; font-weight:600; }
+    .inc-sub { font-size:11px; color:var(--muted); margin-top:1px; }
+
+    /* ── Right Detail Panel ── */
+    #rsb {
+      width:270px; background:var(--white); border-left:1px solid var(--border);
+      display:none; flex-direction:column; overflow-y:auto; z-index:900;
+    }
+    #rsb.vis { display:flex; }
+
+    .dp-hdr { padding:16px; background:var(--green); color:#fff; }
+    .dp-id  { font-size:26px; font-weight:800; }
+    .dp-sub { font-size:12px; opacity:.8; }
+
+    .dp-sec { padding:12px 14px; border-bottom:1px solid var(--border); }
+    .dp-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:6px; }
+    .dp-val { font-size:14px; font-weight:500; }
+
+    .spec-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+    .spec-box { background:var(--bg); border-radius:7px; padding:9px; }
+    .spec-v { font-size:17px; font-weight:800; color:var(--green); }
+    .spec-k { font-size:10px; color:var(--muted); }
+
+    .badge { display:inline-flex; align-items:center; gap:4px; padding:2px 9px; border-radius:20px; font-size:11px; font-weight:700; }
+    .badge-g { background:#e8f5e9; color:#2e7d32; }
+    .badge-o { background:var(--orange-bg); color:var(--orange); }
+    .badge-b { background:var(--blue-bg); color:var(--blue); }
+    .badge-r { background:var(--red-bg); color:var(--red); }
+
+    #qr-box { display:flex; justify-content:center; padding:10px 0; }
+
+    /* ── Buttons ── */
+    .btn { padding:8px 14px; border-radius:8px; border:none; font-size:13px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; justify-content:center; transition:all .13s; }
+    .btn-p  { background:var(--green); color:#fff; }
+    .btn-p:hover { background:var(--green-l); }
+    .btn-o  { background:var(--orange); color:#fff; }
+    .btn-o:hover { background:var(--orange-l); }
+    .btn-r  { background:var(--red); color:#fff; }
+    .btn-gh { background:transparent; border:1px solid var(--border); color:var(--text); }
+    .btn-gh:hover { background:var(--sand); }
+    .btn-w  { width:100%; }
+    .btn-lg { padding:13px 14px; font-size:15px; }
+
+    .btn-row { display:flex; gap:7px; }
+    .btn-row .btn { flex:1; }
+
+    /* ── Map overlays ── */
+    .tent-m { display:flex; align-items:center; justify-content:center; border:2px solid rgba(0,0,0,.18); border-radius:3px; font-size:8px; font-weight:800; color:#fff; cursor:pointer; transition:transform .15s, box-shadow .15s; user-select:none; }
+    .tent-m:hover { transform:scale(1.2); box-shadow:0 3px 10px rgba(0,0,0,.3); }
+    .tent-m.avail { background:var(--green); }
+    .tent-m.occ   { background:var(--orange); }
+    .tent-m.pan   { background:var(--blue); }
+
+    .map-legend {
+      position:absolute; bottom:20px; left:50%; transform:translateX(-50%);
+      background:rgba(253,249,244,.95); border-radius:12px; padding:8px 16px;
+      display:flex; gap:14px; z-index:500; box-shadow:var(--shadow);
+      border:1px solid var(--border);
+    }
+    .leg-item { display:flex; align-items:center; gap:5px; font-size:12px; }
+    .leg-dot  { width:11px; height:11px; border-radius:2px; }
+
+    .map-fab {
+      position:absolute; right:14px; bottom:64px; z-index:500;
+      width:46px; height:46px; border-radius:50%; background:var(--green);
+      color:#fff; border:none; box-shadow:0 3px 12px rgba(0,0,0,.22);
+      cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center;
+      transition:transform .15s;
+    }
+    .map-fab:hover { transform:scale(1.07); }
+
+    /* ── Bottom Sheet ── */
+    #bsheet {
+      position:fixed; bottom:0; left:0; right:0; z-index:2000;
+      background:var(--white); border-radius:20px 20px 0 0;
+      box-shadow:0 -6px 30px rgba(0,0,0,.18);
+      transform:translateY(105%); transition:transform .3s cubic-bezier(.32,.72,0,1);
+      padding:16px 20px 32px; max-height:82vh; overflow-y:auto;
+    }
+    #bsheet.show { transform:translateY(0); }
+    .drag-h { width:44px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 16px; }
+
+    .help-fab { width:100%; padding:15px; background:var(--red); color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; margin-top:12px; transition:background .15s; }
+    .help-fab:hover { background:#e74c3c; }
+
+    /* ── Modals ── */
+    .ov { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:3000; display:none; align-items:center; justify-content:center; padding:16px; }
+    .ov.show { display:flex; }
+    .modal { background:var(--white); border-radius:16px; padding:22px; width:100%; max-width:390px; max-height:90vh; overflow-y:auto; position:relative; }
+    .modal-title { font-size:17px; font-weight:700; margin-bottom:14px; }
+    .modal-close { position:absolute; top:16px; right:16px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--muted); line-height:1; }
+
+    /* ── Form ── */
+    .fg { margin-bottom:11px; }
+    .fg label { display:block; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:4px; }
+    .fi { width:100%; padding:8px 11px; border:1px solid var(--border); border-radius:8px; font-size:14px; background:var(--bg); color:var(--text); transition:border-color .15s; }
+    .fi:focus { outline:none; border-color:var(--green); }
+    textarea.fi { resize:vertical; min-height:70px; }
+    select.fi { cursor:pointer; }
+    .fi-row { display:flex; gap:8px; }
+    .fi-row .fg { flex:1; }
+
+    /* ── Incident grid ── */
+    .inc-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom:12px; }
+    .inc-opt { padding:10px 6px; border:2px solid var(--border); border-radius:10px; background:var(--bg); cursor:pointer; text-align:center; font-size:11.5px; font-weight:500; transition:all .15s; }
+    .inc-opt:hover { border-color:var(--red); }
+    .inc-opt.on { border-color:var(--red); background:var(--red-bg); color:var(--red); font-weight:700; }
+    .inc-icon { font-size:22px; display:block; margin-bottom:4px; }
+
+    /* ── Toast ── */
+    #toast-w { position:fixed; top:64px; right:14px; z-index:9999; display:flex; flex-direction:column; gap:7px; }
+    .toast { background:var(--green); color:#fff; padding:10px 14px; border-radius:10px; font-size:13px; box-shadow:var(--shadow); animation:tIn .25s ease; max-width:280px; }
+    .toast.err { background:var(--red); }
+    @keyframes tIn { from { transform:translateX(110%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+
+    /* ── Responsive ── */
+    @media (max-width:768px) {
+      #lsb { display:none !important; }
+      #rsb { display:none !important; }
+    }
+
+    /* ── Misc ── */
+    .mt8 { margin-top:8px; }
+    .mt12 { margin-top:12px; }
+    .muted { color:var(--muted); font-size:12px; }
+    .divider { height:1px; background:var(--border); margin:8px 0; }
+    .frow { display:flex; gap:8px; }
+
+    /* ── Print ── */
+    @media print {
+      #hdr, #lsb, #rsb, .map-legend, .map-fab, #bsheet, #toast-w { display:none !important; }
+      #app { padding-top:0; }
+      #map { height:100vh; }
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+  </style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loading">
+  <div style="font-size:40px">⛺</div>
+  <div class="spin"></div>
+  <p>Memuat Peta Kavling SFC #3…</p>
+</div>
+
+<!-- Toast -->
+<div id="toast-w"></div>
+
+<!-- ── HEADER ── -->
+<div id="hdr">
+  <div class="hdr-logo">SFC<br>3</div>
+  <div class="hdr-info">
+    <div class="hdr-name">Sakinah Family Camp #3</div>
+    <div class="hdr-sub">Bukit Baros · Bogor · 2026</div>
+  </div>
+  <div class="mode-wrap">
+    <button class="mode-btn on" onclick="setMode('public')">👁 Publik</button>
+    <button class="mode-btn"    onclick="setMode('peserta')">🏕 Peserta</button>
+    <button class="mode-btn"    onclick="setMode('admin')">⚙️ Admin</button>
+  </div>
+</div>
+
+<!-- ── MAIN ── -->
+<div id="app">
+
+  <!-- Left Sidebar (Admin only) -->
+  <div id="lsb">
+    <div class="sb-section">
+      <div class="sb-title">Statistik Kavling</div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-val" id="st-total" style="color:var(--green)">—</div>
+          <div class="stat-lbl">Total</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="st-avail" style="color:var(--green)">—</div>
+          <div class="stat-lbl">Tersedia</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="st-occ" style="color:var(--orange)">—</div>
+          <div class="stat-lbl">Terisi</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-title">Layer Peta</div>
+      <div id="layer-list"></div>
+    </div>
+
+    <div class="sb-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="sb-title" style="margin:0">Overlay Gambar</div>
+        <button onclick="openOverlayModal()" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--green);background:var(--green);color:#fff;cursor:pointer;font-weight:600">+ Tambah</button>
+      </div>
+      <div id="overlay-list"><div class="muted" style="font-size:11px">Belum ada overlay</div></div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-title">Tools Admin</div>
+      <button class="tool-btn" id="btn-edit-mode" onclick="toggleEditMode()" style="background:var(--bg);border:1.5px solid var(--border);font-weight:600;color:var(--muted)"><span class="ico">✏️</span>Mode Edit: <span id="edit-mode-lbl">OFF</span></button>
+      <button class="tool-btn" id="btn-add" onclick="toggleAddMode()"><span class="ico">⛺</span>Tambah Kavling</button>
+      <button class="tool-btn" onclick="importCSV()"><span class="ico">📥</span>Import CSV Peserta</button>
+      <button class="tool-btn" onclick="document.getElementById('gpx-inp').click()"><span class="ico">🗺</span>Import GPX Track<input type="file" id="gpx-inp" accept=".gpx" style="display:none" onchange="importGPX(this)"></button>
+      <button class="tool-btn" onclick="showAllQR()"><span class="ico">📷</span>Generate Semua QR</button>
+      <button class="tool-btn" onclick="exportPDF()"><span class="ico">📄</span>Unduh Resume PDF</button>
+      <button class="tool-btn" onclick="showSwap()"><span class="ico">🔄</span>Swap Peserta</button>
+      <button class="tool-btn danger" onclick="doResetAll()"><span class="ico">🗑</span>Reset Semua Kavling</button>
+    </div>
+
+    <div class="sb-section" style="flex:1;overflow-y:auto">
+      <div class="sb-title">Laporan Masuk</div>
+      <div id="inc-list"><div class="muted">Belum ada laporan</div></div>
+    </div>
+  </div>
+
+  <!-- Map -->
+  <div id="map-wrap">
+    <div id="map"></div>
+
+    <div class="map-legend">
+      <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>Tersedia</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--orange)"></div>Terisi</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--blue)"></div>Panitia</div>
+    </div>
+
+    <button class="map-fab" onclick="centerMap()" title="Pusatkan ke Area Camp">🎯</button>
+  </div>
+
+  <!-- Right Detail Panel -->
+  <div id="rsb">
+    <div class="dp-hdr">
+      <div class="dp-id" id="dp-id">—</div>
+      <div class="dp-sub" id="dp-badge"></div>
+    </div>
+
+    <div class="dp-sec">
+      <div class="dp-lbl">Spesifikasi</div>
+      <div class="spec-grid">
+        <div class="spec-box"><div class="spec-v" id="dp-cap">—</div><div class="spec-k">Kapasitas</div></div>
+        <div class="spec-box"><div class="spec-v" id="dp-sz">—</div><div class="spec-k">Ukuran</div></div>
+      </div>
+      <div class="muted mt8" id="dp-fac">—</div>
+    </div>
+
+    <div class="dp-sec" id="dp-occ-sec">
+      <div class="dp-lbl">Penghuni</div>
+      <div class="dp-val" id="dp-fam">—</div>
+      <div class="muted" id="dp-mem">—</div>
+    </div>
+
+    <div class="dp-sec">
+      <div class="dp-lbl">QR Code Kavling</div>
+      <div id="qr-box"></div>
+      <button class="btn btn-gh btn-w mt8" onclick="printQRPanel()">🖨 Cetak QR</button>
+    </div>
+
+    <div class="dp-sec" id="dp-admin-ctrl" style="display:none">
+      <div class="dp-lbl">Kelola Kavling</div>
+      <div class="btn-row mt8">
+        <button class="btn btn-gh" onclick="openEditModal()">✏️ Edit</button>
+        <button class="btn btn-r"  onclick="doResetTent()">🗑 Reset</button>
+      </div>
+      <div class="btn-row mt8">
+        <button class="btn btn-gh" onclick="showSwapFromDetail()">🔄 Swap</button>
+        <button class="btn btn-o"  onclick="openAssignModal()">👤 Assign</button>
+      </div>
+      <div class="dp-lbl mt8">Rotasi Tenda</div>
+      <div class="btn-row mt4" style="align-items:center;gap:6px">
+        <button class="btn btn-gh" onclick="rotateTent(-15)" style="flex:1">↺ -15°</button>
+        <span id="dp-rot-val" style="font-size:12px;font-weight:700;min-width:38px;text-align:center;color:var(--green)">0°</span>
+        <button class="btn btn-gh" onclick="rotateTent(+15)" style="flex:1">↻ +15°</button>
+      </div>
+      <div class="btn-row mt4">
+        <button class="btn btn-gh" style="flex:1;font-size:11px" onclick="rotateTent(-5)">↺ -5°</button>
+        <button class="btn btn-gh" style="flex:1;font-size:11px" onclick="rotateTent(0,'reset')">⊙ Reset</button>
+        <button class="btn btn-gh" style="flex:1;font-size:11px" onclick="rotateTent(+5)">↻ +5°</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<!-- ── BOTTOM SHEET ── -->
+<div id="bsheet">
+  <div class="drag-h"></div>
+  <div class="muted" style="text-transform:uppercase;letter-spacing:.5px;font-weight:700">Kavling</div>
+  <div style="font-size:26px;font-weight:800;margin-bottom:12px" id="bs-id">—</div>
+
+  <div class="spec-grid" style="margin-bottom:14px">
+    <div class="spec-box"><div class="spec-v" id="bs-cap">—</div><div class="spec-k">Kapasitas</div></div>
+    <div class="spec-box"><div class="spec-v" id="bs-sz">—</div><div class="spec-k">Ukuran</div></div>
+  </div>
+  <div class="muted" id="bs-fac" style="margin-bottom:16px">—</div>
+
+  <div id="bs-avail">
+    <div class="fg"><label>Nama Keluarga</label><input class="fi" id="bs-fam" placeholder="Keluarga Ahmad Wijaya"></div>
+    <div class="fg"><label>Jumlah Anggota</label><input class="fi" id="bs-mbr" type="number" min="1" max="10" placeholder="4"></div>
+    <button class="btn btn-p btn-w btn-lg" onclick="claimTent()">✅ Pilih Tenda Ini</button>
+  </div>
+
+  <div id="bs-taken" style="display:none">
+    <div style="background:var(--orange-bg);border-radius:10px;padding:12px 14px;margin-bottom:12px">
+      <div class="dp-lbl">Penghuni</div>
+      <div style="font-size:16px;font-weight:700;margin-top:4px" id="bs-occ-name">—</div>
+      <div class="muted" id="bs-occ-mem">—</div>
+    </div>
+    <button class="help-fab" onclick="openIncidentModal()">🆘 Minta Bantuan / Lapor Kendala</button>
+  </div>
+
+  <button class="btn btn-gh btn-w mt12" onclick="closeBSheet()">✕ Tutup</button>
+</div>
+
+<!-- ══════════════ MODALS ══════════════ -->
+
+<!-- Admin Login -->
+<div class="ov show" id="m-login">
+  <div class="modal">
+    <div class="modal-title">🔐 Masuk sebagai Admin</div>
+    <div class="muted" style="margin-bottom:14px">Masukkan PIN panitia (default: <b>1234</b>)</div>
+    <div class="fg"><label>PIN Admin</label><input type="password" class="fi" id="pin-inp" placeholder="••••" maxlength="6" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="btn-row mt8">
+      <button class="btn btn-gh" onclick="cancelLogin()">Batal</button>
+      <button class="btn btn-p" onclick="doLogin()">Masuk</button>
+    </div>
+  </div>
+</div>
+
+<!-- Incident -->
+<div class="ov" id="m-incident">
+  <div class="modal">
+    <button class="modal-close" onclick="closeOv('m-incident')">✕</button>
+    <div class="modal-title">🆘 Lapor Kendala</div>
+    <div class="dp-lbl" style="margin-bottom:8px">Jenis Masalah</div>
+    <div class="inc-grid">
+      <div class="inc-opt" onclick="pickInc(this,'tenda_bocor')"><span class="inc-icon">💧</span>Tenda Bocor</div>
+      <div class="inc-opt" onclick="pickInc(this,'seleting_rusak')"><span class="inc-icon">🔧</span>Seleting Rusak</div>
+      <div class="inc-opt" onclick="pickInc(this,'gangguan_hewan')"><span class="inc-icon">🐛</span>Gangguan Hewan</div>
+      <div class="inc-opt" onclick="pickInc(this,'darurat')"><span class="inc-icon">🚨</span>Darurat!</div>
+      <div class="inc-opt" onclick="pickInc(this,'toilet_penuh')"><span class="inc-icon">🚽</span>Toilet Penuh</div>
+      <div class="inc-opt" onclick="pickInc(this,'lainnya')"><span class="inc-icon">📝</span>Lainnya</div>
+    </div>
+    <div class="fg"><label>Keterangan</label><textarea class="fi" id="inc-desc" placeholder="Ceritakan masalah yang terjadi…"></textarea></div>
+    <button class="btn btn-r btn-w btn-lg" onclick="submitIncident()">🆘 Kirim Laporan</button>
+  </div>
+</div>
+
+<!-- QR Modal -->
+<div class="ov" id="m-qr">
+  <div class="modal" style="text-align:center">
+    <button class="modal-close" onclick="closeOv('m-qr')">✕</button>
+    <div class="modal-title" id="qr-m-title">QR Code Kavling</div>
+    <div id="qr-m-code" style="display:flex;justify-content:center;margin:12px 0"></div>
+    <div class="muted" id="qr-m-url" style="word-break:break-all;margin-bottom:12px"></div>
+    <button class="btn btn-p btn-w" onclick="window.print()">🖨 Cetak</button>
+  </div>
+</div>
+
+<!-- Edit Tent -->
+<div class="ov" id="m-edit">
+  <div class="modal">
+    <button class="modal-close" onclick="closeOv('m-edit')">✕</button>
+    <div class="modal-title">✏️ Edit Kavling</div>
+    <input type="hidden" id="edit-orig-id">
+    <div class="fg"><label>Nomor Kavling</label><input class="fi" id="edit-num" placeholder="T-01"></div>
+    <div class="fi-row">
+      <div class="fg"><label>Kapasitas (orang)</label><input class="fi" id="edit-cap" type="number" min="1" max="12" placeholder="4"></div>
+      <div class="fg"><label>Ukuran</label><input class="fi" id="edit-sz" placeholder="3×3m"></div>
+    </div>
+    <div class="fg"><label>Tipe Kavling</label>
+      <select class="fi" id="edit-type">
+        <option value="peserta">Peserta Umum</option>
+        <option value="panitia">Panitia</option>
+        <option value="vip">VIP / Tamu Khusus</option>
+      </select>
+    </div>
+    <div class="fg"><label>Fasilitas</label><input class="fi" id="edit-fac" placeholder="Matras, Penerangan"></div>
+    <div class="btn-row mt8">
+      <button class="btn btn-gh" onclick="closeOv('m-edit')">Batal</button>
+      <button class="btn btn-p" onclick="saveTentEdit()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Assign Peserta -->
+<div class="ov" id="m-assign">
+  <div class="modal">
+    <button class="modal-close" onclick="closeOv('m-assign')">✕</button>
+    <div class="modal-title">👤 Assign Peserta</div>
+    <input type="hidden" id="assign-id">
+    <div class="fg"><label>Nama Keluarga</label><input class="fi" id="assign-fam" placeholder="Keluarga Budi Santoso"></div>
+    <div class="fg"><label>Jumlah Anggota</label><input class="fi" id="assign-mbr" type="number" min="1" max="12" placeholder="4"></div>
+    <div class="btn-row mt8">
+      <button class="btn btn-gh" onclick="closeOv('m-assign')">Batal</button>
+      <button class="btn btn-p" onclick="doAssign()">✅ Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Swap -->
+<div class="ov" id="m-swap">
+  <div class="modal">
+    <button class="modal-close" onclick="closeOv('m-swap')">✕</button>
+    <div class="modal-title">🔄 Swap Penghuni</div>
+    <div class="muted" style="margin-bottom:14px">Tukar penghuni antara dua kavling</div>
+    <div class="fg"><label>Kavling A</label><select class="fi" id="sw-a"></select></div>
+    <div class="fg"><label>Kavling B</label><select class="fi" id="sw-b"></select></div>
+    <div class="btn-row mt8">
+      <button class="btn btn-gh" onclick="closeOv('m-swap')">Batal</button>
+      <button class="btn btn-o" onclick="doSwap()">🔄 Tukar Sekarang</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import CSV -->
+<div class="ov" id="m-csv">
+  <div class="modal">
+    <button class="modal-close" onclick="closeOv('m-csv')">✕</button>
+    <div class="modal-title">📥 Import Data Peserta</div>
+    <div class="muted" style="margin-bottom:14px">Upload file CSV/Excel dengan kolom: <b>nama_keluarga, jumlah_anggota, kavling_id</b></div>
+    <div class="fg" style="border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById('csv-inp').click()">
+      <div style="font-size:30px;margin-bottom:6px">📄</div>
+      <div style="font-size:13px;font-weight:600">Klik atau seret file CSV di sini</div>
+      <div class="muted">Format: .csv atau .xlsx</div>
+      <input type="file" id="csv-inp" accept=".csv,.xlsx" style="display:none" onchange="handleCSV(this)">
+    </div>
+    <div class="mt12" id="csv-preview"></div>
+  </div>
+</div>
+
+<!-- ── Image Overlay Modal ── -->
+<div class="ov" id="m-overlay">
+  <div class="modal">
+    <button class="modal-close" onclick="closeOv('m-overlay')">✕</button>
+    <div class="modal-title" id="ov-modal-title">🗺 Tambah Overlay Gambar</div>
+    <input type="hidden" id="ov-edit-id">
+
+    <div class="fg" style="border:2px dashed var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer;margin-bottom:12px" onclick="document.getElementById('ov-img-inp').click()">
+      <div style="font-size:26px;margin-bottom:5px">🖼</div>
+      <div style="font-size:13px;font-weight:600" id="ov-file-lbl">Klik untuk pilih gambar</div>
+      <div class="muted" style="font-size:11px">JPG · PNG · WebP</div>
+      <input type="file" id="ov-img-inp" accept="image/*" style="display:none" onchange="handleOverlayFile(this)">
+    </div>
+
+    <div class="fg" style="margin-bottom:12px">
+      <label style="font-size:11px;color:var(--muted)">Nama / Label</label>
+      <input class="inp" id="ov-name" placeholder="contoh: Denah Kavling, Foto Satelit..." style="margin-top:4px">
+    </div>
+
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;color:var(--muted)">Opacity: <span id="ov-modal-opval">70</span>%</label>
+      <input type="range" id="ov-modal-op" min="10" max="100" value="70" style="width:100%;margin-top:4px" oninput="document.getElementById('ov-modal-opval').textContent=this.value">
+    </div>
+
+    <div style="background:var(--bg);border-radius:8px;padding:10px;margin-bottom:14px;font-size:11px;color:var(--muted);line-height:1.6">
+      💡 Setelah diterapkan: <b>seret sudut biru</b> untuk resize bebas, <b>seret tengah</b> untuk pindah posisi. Klik toolbar di atas gambar untuk opsi lain.
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-g" onclick="applyImageOverlay()">✅ Terapkan</button>
+      <button class="btn btn-r" id="ov-del-btn" style="display:none" onclick="deleteOverlay(document.getElementById('ov-edit-id').value)">🗑 Hapus</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//   SUPABASE
+// ══════════════════════════════════════════════
+const SUPABASE_URL = 'https://dcbutyeijyhfzqccdsin.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjYnV0eWVpanloZnpxY2Nkc2luIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3NjgzNzcsImV4cCI6MjA5ODM0NDM3N30.G3HPFW41rpspTbZjYVcAcwXRZNbnhDWoX7ZrMbgxA54';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── DB helpers ──
+async function dbLoadTents() {
+  const { data, error } = await sb.from('tents').select('*').order('id');
+  if (error) { console.error('dbLoadTents:', error); return null; }
+  return data;
+}
+async function dbUpsertTent(t) {
+  const { error } = await sb.from('tents').upsert({ ...t, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+  if (error) console.error('dbUpsertTent:', error);
+}
+async function dbUpsertTents(arr) {
+  const { error } = await sb.from('tents').upsert(arr.map(t => ({ ...t, updated_at: new Date().toISOString() })), { onConflict: 'id' });
+  if (error) console.error('dbUpsertTents:', error);
+}
+async function dbLoadIncidents() {
+  const { data, error } = await sb.from('incidents').select('*').order('created_at', { ascending: false });
+  if (error) { console.error('dbLoadIncidents:', error); return []; }
+  return (data || []).map(i => ({ ...i, tentId: i.tent_id, desc: i.description }));
+}
+async function dbInsertIncident(tentId, type, desc) {
+  const { data, error } = await sb.from('incidents').insert({ tent_id: tentId, type, description: desc }).select().single();
+  if (error) { console.error('dbInsertIncident:', error); return null; }
+  return { ...data, tentId: data.tent_id, desc: data.description };
+}
+async function dbResolveIncident(id) {
+  const { error } = await sb.from('incidents').update({ status: 'resolved' }).eq('id', id);
+  if (error) console.error('dbResolveIncident:', error);
+}
+
+// ── Realtime ──
+function initRealtime() {
+  sb.channel('tents-rt')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tents' }, ({ new: row }) => {
+      const idx = tents.findIndex(t => t.id === row.id);
+      if (idx >= 0) tents[idx] = row; else tents.push(row);
+      renderAllTents();
+      if (selTentId === row.id && (mode === 'admin' || mode === 'public')) showDetailPanel(row);
+    })
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tents' }, ({ new: row }) => {
+      if (!tents.find(t => t.id === row.id)) { tents.push(row); drawTent(row); updateStats(); }
+    })
+    .subscribe();
+
+  sb.channel('incidents-rt')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'incidents' }, ({ new: row }) => {
+      const inc = { ...row, tentId: row.tent_id, desc: row.description };
+      incidents.unshift(inc);
+      renderIncList();
+      if (mode === 'admin') toast('🆘 Laporan baru: kavling ' + row.tent_id);
+    })
+    .subscribe();
+}
+
+// ══════════════════════════════════════════════
+//   STATE & CONSTANTS
+// ══════════════════════════════════════════════
+const ADMIN_PIN   = '1234';
+const CAMP_CENTER = [-6.9663, 106.9578];
+const CAMP_ZOOM   = 18;
+const LAT_PER_M   = 0.000009;
+const LON_PER_M   = 0.0000091;
+
+let mode        = 'public';
+let selTentId   = null;
+let addMode     = false;
+let editMode    = false;  // global edit mode — tampilkan/sembunyikan semua handles
+let incType     = null;
+let map, tentMarkers = {}, areaLayers = {};
+let layerVis    = {};
+let layerLocked = {};
+let tents     = [];
+let incidents = [];
+
+// ══════════════════════════════════════════════
+//   TENT GENERATION
+// ══════════════════════════════════════════════
+function initTents() {
+  const t = [];
+  let id = 1;
+  // Ring 1: 10 tents @ 9m
+  for (let i = 0; i < 10; i++) {
+    const a = (i * 36) * Math.PI / 180;
+    t.push(mkTent(`T-${pad(id++)}`, CAMP_CENTER[0] + Math.cos(a)*9*LAT_PER_M, CAMP_CENTER[1] + Math.sin(a)*9*LON_PER_M, 4, '3×3m', 'peserta'));
+  }
+  // Ring 2: 20 tents @ 16m
+  for (let i = 0; i < 20; i++) {
+    const a = (i * 18 + 9) * Math.PI / 180;
+    t.push(mkTent(`T-${pad(id++)}`, CAMP_CENTER[0] + Math.cos(a)*16*LAT_PER_M, CAMP_CENTER[1] + Math.sin(a)*16*LON_PER_M, 4, '3×3m', 'peserta'));
+  }
+  // Panitia row (5 tents, north side)
+  const pLat = -6.96618, pLon = 106.95775;
+  for (let i = 0; i < 5; i++) {
+    t.push(mkTent(`P-${pad(i+1)}`, pLat, pLon + (i-2)*4*LON_PER_M, 3, '2×3m', 'panitia', 'panitia', 'Panitia SFC3', 3));
+  }
+  return t;
+}
+
+function mkTent(id, lat, lon, cap, sz, type, status='available', family=null, members=null, rotation=0) {
+  return { id, lat, lon, capacity:cap, size:sz, type, facilities:'Matras, Penerangan', status, family, members, rotation };
+}
+
+// Parse size string "3×3m" → {w, h} in meters
+function parseSizeM(sz) {
+  const m = (sz||'3×3m').replace(/\s/g,'').match(/([\d.]+)[x×]([\d.]+)/i);
+  return m ? { w: parseFloat(m[1]), h: parseFloat(m[2]) } : { w: 3, h: 3 };
+}
+
+// Convert real-world rect (center lat/lon, w/h meters, rotation degrees) to 4 [lat,lon] corners
+function tentCorners(lat, lon, sz, rotDeg) {
+  const { w, h } = parseSizeM(sz);
+  const LAT_M = 111320;
+  const LON_M = 111320 * Math.cos(lat * Math.PI / 180);
+  const hw = w / 2, hh = h / 2;
+  const r  = (rotDeg || 0) * Math.PI / 180;
+  const cos = Math.cos(r), sin = Math.sin(r);
+  // local offsets (meters): 4 corners
+  const local = [[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]];
+  return local.map(([dx,dy]) => [
+    lat + ( dx*cos - dy*sin) / LAT_M,
+    lon + ( dx*sin + dy*cos) / LON_M
+  ]);
+}
+function pad(n) { return String(n).padStart(2,'0'); }
+
+// ══════════════════════════════════════════════
+//   AREAS (from GPX)
+// ══════════════════════════════════════════════
+const AREAS = [
+  {
+    id:'camp_utama', name:'Area Camp Utama', color:'#2d5631', fillOp:.10,
+    coords:[[-6.96624,106.95769],[-6.96651,106.95804],[-6.96656,106.95795],[-6.96654,106.95769],[-6.96649,106.95762],[-6.96615,106.95757],[-6.96611,106.95760],[-6.96616,106.95767],[-6.96624,106.95769]]
+  },
+  {
+    id:'camp_panitia', name:'Area Camp Panitia', color:'#1a7ba8', fillOp:.10,
+    coords:[[-6.96618,106.95753],[-6.96641,106.95755],[-6.96640,106.95748],[-6.96621,106.95744],[-6.96616,106.95750],[-6.96618,106.95753]]
+  },
+  {
+    id:'kajian', name:'Area Kajian Outdoor', color:'#4a7c4e', fillOp:.08,
+    coords:[[-6.96624,106.95769],[-6.96651,106.95804],[-6.96670,106.95790],[-6.96660,106.95760],[-6.96645,106.95755],[-6.96624,106.95769]]
+  },
+  {
+    id:'parkiran', name:'Area Parkiran', color:'#7a7470', fillOp:.10,
+    coords:[[-6.96590,106.95766],[-6.96595,106.95760],[-6.96577,106.95739],[-6.96570,106.95748],[-6.96570,106.95762],[-6.96590,106.95766]]
+  },
+  {
+    id:'toilet', name:'Area Toilet (10 Pintu)', color:'#c87137', fillOp:.18,
+    coords:[[-6.96609,106.95741],[-6.96609,106.95735],[-6.96594,106.95735],[-6.96594,106.95741],[-6.96609,106.95741]]
+  },
+  {
+    id:'dapur', name:'Dapur Umum', color:'#e67e22', fillOp:.18,
+    coords:[[-6.96605,106.95769],[-6.96613,106.95774],[-6.96615,106.95769],[-6.96607,106.95764],[-6.96605,106.95769]]
+  },
+  {
+    id:'lapang', name:'Area Lapang Bawah', color:'#27ae60', fillOp:.07,
+    coords:[[-6.96700,106.95790],[-6.96720,106.95820],[-6.96750,106.95810],[-6.96740,106.95775],[-6.96700,106.95790]]
+  },
+  {
+    id:'kolam', name:'Kolam Renang & Gazebo', color:'#2980b9', fillOp:.18,
+    coords:[[-6.96560,106.95800],[-6.96560,106.95830],[-6.96580,106.95830],[-6.96580,106.95800],[-6.96560,106.95800]]
+  }
+];
+
+const POIS = [
+  { name:'🔥 Api Unggun', lat:CAMP_CENTER[0]+.000005, lon:CAMP_CENTER[1], desc:'Pusat area camp' },
+  { name:'🚽 Toilet',     lat:-6.96601, lon:106.95738, desc:'10 pintu berjajar' },
+  { name:'🍳 Dapur Umum', lat:-6.96610, lon:106.95770, desc:'Dapur bersama' },
+  { name:'🚗 Parkiran',   lat:-6.96580, lon:106.95752, desc:'Area parkir kendaraan' },
+  { name:'🏊 Kolam Renang',lat:-6.96570,lon:106.95815, desc:'Kolam renang anak + gazebo' },
+  { name:'📖 Aula',        lat:-6.96590, lon:106.95780, desc:'Aula semi indoor + area sholat' },
+];
+
+// ══════════════════════════════════════════════
+//   MAP INIT
+// ══════════════════════════════════════════════
+async function initMap() {
+  map = L.map('map', { zoomControl:false }).setView(CAMP_CENTER, CAMP_ZOOM);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution:'© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom:21, maxNativeZoom:19
+  }).addTo(map);
+
+  L.control.zoom({ position:'topright' }).addTo(map);
+
+  AREAS.forEach(a => {
+    const ly = L.polygon(a.coords, { color:a.color, weight:2, fillColor:a.color, fillOpacity:a.fillOp, dashArray:'4,4' });
+    ly.bindTooltip(a.name, { sticky:true });
+    ly.addTo(map);
+    areaLayers[a.id] = ly;
+    layerVis[a.id]    = true;
+    layerLocked[a.id] = false;
+  });
+
+  POIS.forEach(p => {
+    const ico = L.divIcon({
+      html:`<div style="font-size:18px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));cursor:default">${p.name.split(' ')[0]}</div>`,
+      iconSize:[22,22], iconAnchor:[11,11], className:''
+    });
+    L.marker([p.lat, p.lon], { icon:ico }).bindTooltip(`<b>${p.name}</b><br>${p.desc}`).addTo(map);
+  });
+
+  // Load data from Supabase
+  const data = await dbLoadTents();
+  if (!data || data.length === 0) {
+    tents = initTents();
+    toast('⏳ Setup awal: menyimpan 35 kavling ke database…');
+    await dbUpsertTents(tents);
+    toast('✅ Database siap!');
+  } else {
+    tents = data;
+  }
+
+  incidents = await dbLoadIncidents();
+
+  initRealtime();
+  renderAllTents();
+  map.on('click', onMapClick);
+  buildLayerList();
+  restoreOverlay();
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('m-login').classList.remove('show');
+
+  const tentParam = new URLSearchParams(location.search).get('tent');
+  if (tentParam) setTimeout(() => openTentById(tentParam), 500);
+}
+
+// ══════════════════════════════════════════════
+//   TENT RENDER
+// ══════════════════════════════════════════════
+function renderAllTents() {
+  Object.values(tentMarkers).forEach(g => g.remove ? g.remove() : g.remove());
+  tentMarkers = {};
+  tents.forEach(drawTent);
+  updateStats();
+}
+
+function tentColor(t) {
+  if (t.type === 'panitia') return { fill:'#1a7ba8', stroke:'#145f84' };
+  if (t.status === 'occupied')  return { fill:'#c87137', stroke:'#9e5929' };
+  return { fill:'#2d5631', stroke:'#1e3b21' };
+}
+
+function drawTent(t) {
+  const corners = tentCorners(t.lat, t.lon, t.size, t.rotation || 0);
+  const { fill, stroke } = tentColor(t);
+  const lbl = t.id.replace('T-','').replace('P-','P');
+  const isSelected = t.id === selTentId;
+
+  const poly = L.polygon(corners, {
+    color: isSelected ? '#f7c948' : stroke,
+    weight: isSelected ? 2.5 : 1.5,
+    fillColor: fill,
+    fillOpacity: 0.82,
+    interactive: true
+  });
+
+  // Label di tengah
+  const labelIcon = L.divIcon({
+    html: `<div style="font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 2px #0006;white-space:nowrap;pointer-events:none">${lbl}</div>`,
+    className: '', iconAnchor: [10, 6]
+  });
+  const labelMarker = L.marker([t.lat, t.lon], { icon: labelIcon, interactive: false });
+
+  // Drag handle — hanya tampil saat editMode ON (admin only)
+  let dragMarker = null;
+  if (mode === 'admin') {
+    const handleIcon = L.divIcon({
+      html: `<div style="width:18px;height:18px;background:rgba(255,255,255,0.92);border:2px solid #444;border-radius:4px;cursor:move;display:flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 1px 4px #0005;user-select:none">✛</div>`,
+      className: '', iconSize:[18,18], iconAnchor:[9,9]
+    });
+    dragMarker = L.marker([t.lat, t.lon], { icon: handleIcon, draggable: true, zIndexOffset: 300 });
+    dragMarker.on('drag', e => {
+      const ll = e.target.getLatLng();
+      poly.setLatLngs(tentCorners(ll.lat, ll.lng, t.size, t.rotation || 0));
+      labelMarker.setLatLng(ll);
+    });
+    dragMarker.on('dragend', e => {
+      const ll = e.target.getLatLng();
+      t.lat = ll.lat; t.lon = ll.lng;
+      dbUpsertTent(t);
+    });
+    if (editMode) dragMarker.addTo(map); // hanya tambah ke map jika editMode ON
+  }
+
+  poly.on('click', () => selectTent(t.id));
+  poly.addTo(map);
+  labelMarker.addTo(map);
+
+  tentMarkers[t.id] = { poly, labelMarker, dragMarker,
+    remove()      { poly.remove(); labelMarker.remove(); if (dragMarker) dragMarker.remove(); },
+    showHandle()  { if (dragMarker && !map.hasLayer(dragMarker)) dragMarker.addTo(map); },
+    hideHandle()  { if (dragMarker && map.hasLayer(dragMarker))  dragMarker.remove(); }
+  };
+}
+
+function updateStats() {
+  const total = tents.length;
+  const occ   = tents.filter(t => t.status !== 'available').length;
+  document.getElementById('st-total').textContent = total;
+  document.getElementById('st-avail').textContent = total - occ;
+  document.getElementById('st-occ').textContent   = occ;
+}
+
+// ══════════════════════════════════════════════
+//   TENT SELECTION
+// ══════════════════════════════════════════════
+function selectTent(id) {
+  selTentId = id;
+  const t = tents.find(x => x.id === id);
+  if (!t) return;
+  if (mode === 'public' || mode === 'admin') showDetailPanel(t);
+  if (mode === 'peserta') showBSheet(t);
+  if (mode === 'admin') document.getElementById('rsb').classList.add('vis');
+}
+
+function openTentById(id) {
+  const t = tents.find(x => x.id === id);
+  if (!t) return;
+  map.setView([t.lat, t.lon], 20);
+  selectTent(id);
+}
+
+// ══════════════════════════════════════════════
+//   DETAIL PANEL
+// ══════════════════════════════════════════════
+function showDetailPanel(t) {
+  document.getElementById('rsb').classList.add('vis');
+  document.getElementById('dp-id').textContent = t.id;
+  document.getElementById('dp-cap').textContent = t.capacity + 'P';
+  document.getElementById('dp-sz').textContent  = t.size;
+  document.getElementById('dp-fac').textContent = t.facilities;
+  document.getElementById('dp-fam').textContent = t.family || '—';
+  document.getElementById('dp-mem').textContent = t.members ? t.members + ' anggota' : '—';
+
+  const b = document.getElementById('dp-badge');
+  if (t.type === 'panitia')       b.innerHTML = '<span class="badge badge-b">● Panitia</span>';
+  else if (t.status === 'occupied') b.innerHTML = '<span class="badge badge-o">● Terisi</span>';
+  else                              b.innerHTML = '<span class="badge badge-g">● Tersedia</span>';
+
+  document.getElementById('dp-admin-ctrl').style.display = (mode === 'admin') ? 'block' : 'none';
+  const rotEl = document.getElementById('dp-rot-val');
+  if (rotEl) rotEl.textContent = (t.rotation || 0) + '°';
+
+  // QR
+  const qb = document.getElementById('qr-box');
+  qb.innerHTML = '';
+  genQR(qb, t.id, 120);
+}
+
+// ══════════════════════════════════════════════
+//   BOTTOM SHEET
+// ══════════════════════════════════════════════
+function showBSheet(t) {
+  document.getElementById('bs-id').textContent  = t.id;
+  document.getElementById('bs-cap').textContent = t.capacity + 'P';
+  document.getElementById('bs-sz').textContent  = t.size;
+  document.getElementById('bs-fac').textContent = t.facilities;
+  const avail = t.status === 'available' && t.type !== 'panitia';
+  document.getElementById('bs-avail').style.display  = avail ? 'block' : 'none';
+  document.getElementById('bs-taken').style.display  = avail ? 'none' : 'block';
+  if (!avail) {
+    document.getElementById('bs-occ-name').textContent = t.family || 'Panitia SFC3';
+    document.getElementById('bs-occ-mem').textContent  = t.members ? t.members + ' anggota' : '';
+  } else {
+    document.getElementById('bs-fam').value = '';
+    document.getElementById('bs-mbr').value = '';
+  }
+  document.getElementById('bsheet').classList.add('show');
+}
+
+function closeBSheet() { document.getElementById('bsheet').classList.remove('show'); }
+
+// ══════════════════════════════════════════════
+//   CLAIM TENT (Peserta)
+// ══════════════════════════════════════════════
+async function claimTent() {
+  const fam = document.getElementById('bs-fam').value.trim();
+  const mbr = parseInt(document.getElementById('bs-mbr').value) || 1;
+  if (!fam) { toast('Masukkan nama keluarga terlebih dahulu', true); return; }
+  const t = tents.find(x => x.id === selTentId);
+  if (!t || t.status !== 'available') { toast('Kavling sudah diambil orang lain!', true); return; }
+  t.status = 'occupied'; t.family = fam; t.members = mbr;
+  closeBSheet();
+  renderAllTents();
+  await dbUpsertTent(t);
+  toast(`✅ Kavling ${t.id} berhasil dipilih oleh ${fam}!`);
+}
+
+// ══════════════════════════════════════════════
+//   ADMIN ACTIONS
+// ══════════════════════════════════════════════
+async function doResetTent() {
+  if (!selTentId || !confirm('Reset kavling ini? Data penghuni akan dihapus.')) return;
+  const t = tents.find(x => x.id === selTentId);
+  if (t && t.type !== 'panitia') {
+    t.status = 'available'; t.family = null; t.members = null;
+    renderAllTents(); showDetailPanel(t);
+    await dbUpsertTent(t);
+    toast(`Kavling ${t.id} di-reset`);
+  }
+}
+
+async function doResetAll() {
+  if (!confirm('Reset SEMUA kavling peserta? Data akan dihapus permanen!')) return;
+  const toReset = tents.filter(t => t.type !== 'panitia');
+  toReset.forEach(t => { t.status='available'; t.family=null; t.members=null; });
+  renderAllTents();
+  await dbUpsertTents(toReset);
+  toast('Semua kavling di-reset');
+}
+
+async function rotateTent(delta, cmd) {
+  if (!selTentId) return;
+  const t = tents.find(x => x.id === selTentId);
+  if (!t) return;
+  if (cmd === 'reset') t.rotation = 0;
+  else t.rotation = ((t.rotation || 0) + delta + 360) % 360;
+  // Redraw hanya tenda ini
+  const g = tentMarkers[t.id];
+  if (g) g.remove();
+  drawTent(t);
+  const rotEl = document.getElementById('dp-rot-val');
+  if (rotEl) rotEl.textContent = t.rotation + '°';
+  await dbUpsertTent(t);
+}
+
+function openEditModal() {
+  const t = tents.find(x => x.id === selTentId);
+  if (!t) return;
+  document.getElementById('edit-orig-id').value = t.id;
+  document.getElementById('edit-num').value     = t.id;
+  document.getElementById('edit-cap').value     = t.capacity;
+  document.getElementById('edit-sz').value      = t.size;
+  document.getElementById('edit-type').value    = t.type;
+  document.getElementById('edit-fac').value     = t.facilities;
+  openOv('m-edit');
+}
+
+async function saveTentEdit() {
+  const orig = document.getElementById('edit-orig-id').value;
+  const t    = tents.find(x => x.id === orig);
+  if (!t) return;
+  t.id        = document.getElementById('edit-num').value || orig;
+  t.capacity  = parseInt(document.getElementById('edit-cap').value) || 4;
+  t.size      = document.getElementById('edit-sz').value || '3×3m';
+  t.type      = document.getElementById('edit-type').value;
+  t.facilities= document.getElementById('edit-fac').value;
+  renderAllTents(); closeOv('m-edit'); showDetailPanel(t);
+  await dbUpsertTent(t);
+  toast('Kavling diperbarui');
+}
+
+function openAssignModal() {
+  const t = tents.find(x => x.id === selTentId);
+  if (!t) return;
+  document.getElementById('assign-id').value    = t.id;
+  document.getElementById('assign-fam').value   = t.family || '';
+  document.getElementById('assign-mbr').value   = t.members || '';
+  openOv('m-assign');
+}
+
+async function doAssign() {
+  const id  = document.getElementById('assign-id').value;
+  const t   = tents.find(x => x.id === id);
+  if (!t) return;
+  t.family  = document.getElementById('assign-fam').value;
+  t.members = parseInt(document.getElementById('assign-mbr').value) || 1;
+  t.status  = 'occupied';
+  renderAllTents(); closeOv('m-assign'); showDetailPanel(t);
+  await dbUpsertTent(t);
+  toast(`Peserta di-assign ke kavling ${t.id}`);
+}
+
+function showSwapFromDetail() { showSwap(); }
+function showSwap() {
+  const opts = tents.map(t => `<option value="${t.id}">${t.id} — ${t.family || 'Kosong'}</option>`).join('');
+  document.getElementById('sw-a').innerHTML = opts;
+  document.getElementById('sw-b').innerHTML = opts;
+  if (selTentId) document.getElementById('sw-a').value = selTentId;
+  openOv('m-swap');
+}
+
+async function doSwap() {
+  const aId = document.getElementById('sw-a').value;
+  const bId = document.getElementById('sw-b').value;
+  if (aId === bId) { toast('Pilih dua kavling yang berbeda', true); return; }
+  const a = tents.find(x=>x.id===aId), b = tents.find(x=>x.id===bId);
+  [a.family,  b.family]  = [b.family,  a.family];
+  [a.members, b.members] = [b.members, a.members];
+  [a.status,  b.status]  = [b.status,  a.status];
+  renderAllTents(); closeOv('m-swap');
+  await dbUpsertTents([a, b]);
+  toast(`🔄 Swap ${aId} ↔ ${bId} berhasil`);
+}
+
+// ── Add tent mode ──
+// ══════════════════════════════════════════════
+//   IMAGE OVERLAYS — multi, drag/resize via corner handles
+// ══════════════════════════════════════════════
+let overlays      = [];   // [{id,name,url,imgLayer,handles,visible,opacity,latN,latS,lonW,lonE,natW,natH}]
+let _ovPendingUrl = null;
+let _ovPendingW   = 0;
+let _ovPendingH   = 0;
+
+const HANDLE_ICON = () => L.divIcon({
+  html: `<div style="width:14px;height:14px;background:#fff;border:2.5px solid #2d5631;border-radius:50%;cursor:crosshair;box-shadow:0 1px 4px #0005"></div>`,
+  className:'', iconSize:[14,14], iconAnchor:[7,7]
+});
+const MOVE_ICON = () => L.divIcon({
+  html: `<div style="width:18px;height:18px;background:rgba(255,255,255,0.9);border:2px solid #c87137;border-radius:4px;cursor:move;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 1px 4px #0005">✛</div>`,
+  className:'', iconSize:[18,18], iconAnchor:[9,9]
+});
+
+// Hitung bounds (latN,latS,lonW,lonE) dari tengah peta + aspect ratio gambar
+function boundsForImage(natW, natH) {
+  const b    = map.getBounds();
+  const cLat = (b.getNorth() + b.getSouth()) / 2;
+  const cLon = (b.getWest()  + b.getEast())  / 2;
+  const dLat = (b.getNorth() - b.getSouth()) * 0.2;
+  const LON_M = 111320 * Math.cos(cLat * Math.PI / 180);
+  const LAT_M = 111320;
+  const hM   = dLat * LAT_M;
+  const wM   = hM * (natW / natH);
+  const dLon = wM / LON_M;
+  return { latN: cLat+dLat, latS: cLat-dLat, lonW: cLon-dLon, lonE: cLon+dLon };
+}
+
+function ROTATE_ICON() {
+  return L.divIcon({ html: `<div style="width:22px;height:22px;background:rgba(255,255,255,0.95);border:2px solid #2196f3;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:grab;box-shadow:0 1px 4px #0005;user-select:none">🔄</div>`, className:'', iconSize:[22,22], iconAnchor:[11,11] });
+}
+
+function createOverlayGroup(id, url, opacity, latN, latS, lonW, lonE, initRotation) {
+  const imgLayer = L.imageOverlay(url, [[latS,lonW],[latN,lonE]], { opacity: opacity/100, interactive: false });
+
+  const hNW = L.marker([latN,lonW], { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
+  const hNE = L.marker([latN,lonE], { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
+  const hSW = L.marker([latS,lonW], { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
+  const hSE = L.marker([latS,lonE], { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
+  const hCenter = L.marker([(latN+latS)/2,(lonW+lonE)/2], { icon:MOVE_ICON(), draggable:true, zIndexOffset:1000 });
+
+  let rot = initRotation || 0;
+
+  // Posisi handle rotasi: di atas center, jarak tetap dalam meter
+  function rotHandleLatLng() {
+    const cLat = (state.latN + state.latS) / 2;
+    const cLon = (state.lonW + state.lonE) / 2;
+    const LAT_M = 111320;
+    const LON_M = 111320 * Math.cos(cLat * Math.PI / 180);
+    const r     = rot * Math.PI / 180;
+    // Handle berada 40m "atas" overlay, diputar sesuai rot
+    const dist  = Math.max(Math.abs(state.latN-state.latS)*LAT_M, Math.abs(state.lonE-state.lonW)*LON_M) * 0.5 + 20;
+    return [cLat + (dist * Math.cos(r)) / LAT_M, cLon + (dist * Math.sin(r)) / LON_M];
+  }
+
+  const hRotate = L.marker(rotHandleLatLng(), { icon:ROTATE_ICON(), draggable:true, zIndexOffset:1100 });
+
+  // Patch _reset agar append rotate() ke transform yang sudah di-set Leaflet
+  const _origReset = imgLayer._reset.bind(imgLayer);
+  imgLayer._reset = function() {
+    _origReset();
+    const el = this.getElement();
+    if (el && rot !== 0) {
+      const cur = el.style.transform || '';
+      // Tambahkan rotate jika belum ada
+      el.style.transform = cur.replace(/\s*rotate\([^)]*\)/, '') + ` rotate(${rot}deg)`;
+    }
+  };
+
+  const state = { latN, latS, lonW, lonE };
+
+  function applyRotation(deg) {
+    rot = ((deg % 360) + 360) % 360;
+    imgLayer._reset();
+    hRotate.setLatLng(rotHandleLatLng());
+    const ov = overlays.find(o => o.id === id);
+    if (ov) { ov.rotation = rot; }
+  }
+
+  function refresh() {
+    imgLayer.setBounds([[state.latS,state.lonW],[state.latN,state.lonE]]);
+    hNW.setLatLng([state.latN, state.lonW]);
+    hNE.setLatLng([state.latN, state.lonE]);
+    hSW.setLatLng([state.latS, state.lonW]);
+    hSE.setLatLng([state.latS, state.lonE]);
+    hCenter.setLatLng([(state.latN+state.latS)/2, (state.lonW+state.lonE)/2]);
+    hRotate.setLatLng(rotHandleLatLng());
+    imgLayer._reset();
+  }
+
+  // Terapkan aspect ratio jika locked
+  function applyAspect(anchorLatS) {
+    const ov = overlays.find(o => o.id === id);
+    if (!ov?.lockAspect || !ov.natW || !ov.natH) return;
+    const cLat  = (state.latN + state.latS) / 2;
+    const LON_M = 111320 * Math.cos(cLat * Math.PI / 180);
+    const wM    = Math.abs(state.lonE - state.lonW) * LON_M;
+    const hM    = wM * (ov.natH / ov.natW);
+    state.latN  = (anchorLatS ?? state.latS) + hM / 111320;
+  }
+
+  hNW.on('drag', e => { state.latN=e.latlng.lat; state.lonW=e.latlng.lng; applyAspect(state.latS); refresh(); });
+  hNE.on('drag', e => { state.latN=e.latlng.lat; state.lonE=e.latlng.lng; applyAspect(state.latS); refresh(); });
+  hSW.on('drag', e => {
+    state.latS=e.latlng.lat; state.lonW=e.latlng.lng;
+    const ov=overlays.find(o=>o.id===id);
+    if (ov?.lockAspect&&ov.natW&&ov.natH) { const wM=Math.abs(state.lonE-state.lonW)*111320*Math.cos(state.latN*Math.PI/180); state.latS=state.latN-wM*(ov.natH/ov.natW)/111320; }
+    refresh();
+  });
+  hSE.on('drag', e => {
+    state.latS=e.latlng.lat; state.lonE=e.latlng.lng;
+    const ov=overlays.find(o=>o.id===id);
+    if (ov?.lockAspect&&ov.natW&&ov.natH) { const wM=Math.abs(state.lonE-state.lonW)*111320*Math.cos(state.latN*Math.PI/180); state.latS=state.latN-wM*(ov.natH/ov.natW)/111320; }
+    refresh();
+  });
+  hCenter.on('drag', e => {
+    const dLat=e.latlng.lat-(state.latN+state.latS)/2, dLon=e.latlng.lng-(state.lonW+state.lonE)/2;
+    state.latN+=dLat; state.latS+=dLat; state.lonW+=dLon; state.lonE+=dLon; refresh();
+  });
+
+  // Rotasi: hitung sudut center → posisi handle
+  hRotate.on('drag', e => {
+    const cLat=(state.latN+state.latS)/2, cLon=(state.lonW+state.lonE)/2;
+    const LON_M=111320*Math.cos(cLat*Math.PI/180), LAT_M=111320;
+    const dy=(e.latlng.lat-cLat)*LAT_M, dx=(e.latlng.lng-cLon)*LON_M;
+    const deg = Math.atan2(dx, dy) * 180 / Math.PI;
+    applyRotation(deg);
+  });
+
+  [hNW,hNE,hSW,hSE,hCenter,hRotate].forEach(h => h.on('dragend', () => {
+    const ov=overlays.find(o=>o.id===id);
+    if (ov) { Object.assign(ov, state); ov.rotation=rot; saveAllOverlays(); }
+  }));
+
+  const handles = [hNW,hNE,hSW,hSE,hCenter,hRotate];
+  return { imgLayer, handles, state, getRotation:()=>rot, applyRotation };
+}
+
+function openOverlayModal(editId) {
+  document.getElementById('ov-edit-id').value  = editId || '';
+  document.getElementById('ov-img-inp').value  = '';
+  document.getElementById('ov-name').value     = '';
+  document.getElementById('ov-modal-op').value = 70;
+  document.getElementById('ov-modal-opval').textContent = 70;
+  document.getElementById('ov-file-lbl').textContent = 'Klik untuk pilih gambar';
+  _ovPendingUrl = null; _ovPendingW = 0; _ovPendingH = 0;
+
+  if (editId) {
+    const ov = overlays.find(o => o.id === editId);
+    if (ov) {
+      document.getElementById('ov-modal-title').textContent = '✏️ Edit Overlay';
+      document.getElementById('ov-name').value     = ov.name;
+      document.getElementById('ov-modal-op').value = ov.opacity;
+      document.getElementById('ov-modal-opval').textContent = ov.opacity;
+      document.getElementById('ov-file-lbl').textContent = '✅ ' + ov.name + ' (upload baru untuk ganti)';
+      document.getElementById('ov-del-btn').style.display = '';
+    }
+  } else {
+    document.getElementById('ov-modal-title').textContent = '🗺 Tambah Overlay Gambar';
+    document.getElementById('ov-del-btn').style.display = 'none';
+  }
+  openOv('m-overlay');
+}
+
+function handleOverlayFile(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      _ovPendingUrl = e.target.result;
+      _ovPendingW   = img.naturalWidth;
+      _ovPendingH   = img.naturalHeight;
+      document.getElementById('ov-file-lbl').textContent = `✅ ${file.name} (${img.naturalWidth}×${img.naturalHeight})`;
+      if (!document.getElementById('ov-name').value)
+        document.getElementById('ov-name').value = file.name.replace(/\.[^.]+$/, '');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function applyImageOverlay() {
+  const editId  = document.getElementById('ov-edit-id').value;
+  const name    = document.getElementById('ov-name').value || 'Overlay';
+  const opacity = parseInt(document.getElementById('ov-modal-op').value);
+
+  if (editId) {
+    const ov = overlays.find(o => o.id === editId);
+    if (!ov) return;
+    ov.name = name; ov.opacity = opacity;
+    ov.imgLayer.setOpacity(opacity/100);
+    if (_ovPendingUrl) {
+      // Ganti gambar dengan posisi yang sama
+      ov.url  = _ovPendingUrl; ov.natW = _ovPendingW; ov.natH = _ovPendingH;
+      const newLayer = L.imageOverlay(_ovPendingUrl, [[ov.latS,ov.lonW],[ov.latN,ov.lonE]], {opacity:opacity/100,interactive:false});
+      ov.imgLayer.remove(); ov.imgLayer = newLayer;
+      if (ov.visible) ov.imgLayer.addTo(map);
+    }
+  } else {
+    if (!_ovPendingUrl) { toast('Pilih gambar terlebih dahulu', true); return; }
+    const id = 'ov_' + Date.now();
+    const { latN,latS,lonW,lonE } = boundsForImage(_ovPendingW, _ovPendingH);
+    const { imgLayer, handles, state, getRotation, applyRotation } = createOverlayGroup(id, _ovPendingUrl, opacity, latN, latS, lonW, lonE, 0);
+    imgLayer.addTo(map);
+    if (editMode) handles.forEach(h => h.addTo(map));
+    overlays.push({ id, name, url:_ovPendingUrl, imgLayer, handles, visible:true, opacity, natW:_ovPendingW, natH:_ovPendingH, lockAspect:true, locked:false, rotation:0, getRotation, applyRotation, ...state });
+  }
+
+  saveAllOverlays(); renderOverlayList(); closeOv('m-overlay');
+  toast(editId ? '✅ Overlay diperbarui' : '✅ Seret ✛ untuk pindah, seret sudut 🟢 untuk resize!');
+}
+
+function toggleOverlay(id) {
+  const ov = overlays.find(o => o.id === id); if (!ov) return;
+  ov.visible = !ov.visible;
+  if (ov.visible) { ov.imgLayer.addTo(map); ov.handles.forEach(h => h.addTo(map)); }
+  else            { ov.imgLayer.remove();   ov.handles.forEach(h => h.remove()); }
+  renderOverlayList(); saveAllOverlays();
+}
+
+function deleteOverlay(id) {
+  if (!confirm('Hapus overlay ini?')) return;
+  const idx = overlays.findIndex(o => o.id === id); if (idx===-1) return;
+  overlays[idx].imgLayer.remove(); overlays[idx].handles.forEach(h => h.remove());
+  overlays.splice(idx,1);
+  saveAllOverlays(); renderOverlayList(); closeOv('m-overlay'); toast('Overlay dihapus');
+}
+
+function setOverlayOpacity(id, val) {
+  const ov = overlays.find(o => o.id === id);
+  if (ov) { ov.opacity = parseInt(val); ov.imgLayer.setOpacity(val/100); }
+  saveAllOverlays();
+}
+
+function renderOverlayList() {
+  const el = document.getElementById('overlay-list'); if (!el) return;
+  if (!overlays.length) { el.innerHTML = '<div class="muted" style="font-size:11px">Belum ada overlay</div>'; return; }
+  el.innerHTML = overlays.map(ov => `
+    <div style="background:var(--bg);border-radius:8px;padding:7px 9px;margin-bottom:5px;border:1px solid ${ov.locked?'var(--orange)':'transparent'}">
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:5px">
+        <span style="font-size:11px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🖼 ${ov.name}</span>
+        <button onclick="toggleOverlay('${ov.id}')" style="border:none;background:none;cursor:pointer;font-size:13px;opacity:${ov.visible?1:.35}" title="Tampilkan/Sembunyikan">👁</button>
+        <button onclick="toggleOverlayLock('${ov.id}')" style="border:none;background:none;cursor:pointer;font-size:13px;color:${ov.locked?'var(--orange)':'var(--muted)'}" title="${ov.locked?'Buka kunci':'Kunci posisi'}">🔒</button>
+        <button onclick="openOverlayModal('${ov.id}')" style="border:none;background:none;cursor:pointer;font-size:12px" title="Edit">✏️</button>
+        <button onclick="deleteOverlay('${ov.id}')" style="border:none;background:none;cursor:pointer;font-size:12px" title="Hapus">🗑</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span style="font-size:10px;color:var(--muted);width:28px">${ov.opacity}%</span>
+        <input type="range" min="10" max="100" value="${ov.opacity}" style="flex:1;height:3px" oninput="setOverlayOpacity('${ov.id}',this.value);this.previousElementSibling.textContent=this.value+'%'">
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span style="font-size:10px;color:var(--muted);width:28px">${Math.round(ov.rotation||0)}°</span>
+        <input type="range" min="-180" max="180" value="${Math.round(ov.rotation||0)}" style="flex:1;height:3px" oninput="setOverlayRotation('${ov.id}',+this.value);this.previousElementSibling.textContent=this.value+'°'">
+      </div>
+      <label style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);cursor:pointer;user-select:none">
+        <input type="checkbox" ${ov.lockAspect?'checked':''} onchange="toggleOverlayAspect('${ov.id}',this.checked)" style="width:12px;height:12px">
+        Kunci rasio gambar
+      </label>
+    </div>`).join('');
+}
+
+function toggleOverlayLock(id) {
+  const ov = overlays.find(o => o.id === id); if (!ov) return;
+  ov.locked = !ov.locked;
+  // Jika dikunci, sembunyikan handles meski editMode ON
+  if (ov.locked) ov.handles.forEach(h => h.remove());
+  else if (editMode && ov.visible) ov.handles.forEach(h => h.addTo(map));
+  saveAllOverlays(); renderOverlayList();
+  toast(ov.locked ? `🔒 Overlay "${ov.name}" dikunci` : `🔓 Overlay "${ov.name}" dibuka`);
+}
+
+function setOverlayRotation(id, deg) {
+  const ov = overlays.find(o => o.id === id); if (!ov) return;
+  ov.rotation = ((deg % 360) + 360) % 360;
+  ov.applyRotation?.(deg);
+  saveAllOverlays();
+}
+
+function toggleOverlayAspect(id, val) {
+  const ov = overlays.find(o => o.id === id); if (!ov) return;
+  ov.lockAspect = val;
+  saveAllOverlays();
+}
+
+function saveAllOverlays() {
+  const data = overlays.map(ov => ({
+    id:ov.id, name:ov.name, url:ov.url, opacity:ov.opacity, visible:ov.visible,
+    natW:ov.natW, natH:ov.natH, latN:ov.latN, latS:ov.latS, lonW:ov.lonW, lonE:ov.lonE,
+    lockAspect:ov.lockAspect, locked:ov.locked, rotation:ov.rotation||0
+  }));
+  try { localStorage.setItem('sfc3-overlays', JSON.stringify(data)); }
+  catch(e) { toast('⚠️ Gambar terlalu besar untuk disimpan lokal', true); }
+}
+
+function restoreOverlay() {
+  localStorage.removeItem('sfc3-overlay'); // migrasi format lama
+  let data; try { data = JSON.parse(localStorage.getItem('sfc3-overlays')||'[]'); } catch(e) { return; }
+  data.forEach(d => {
+    if (!d.url) return;
+    const { latN=d.latN, latS=d.latS, lonW=d.lonW, lonE=d.lonE } = d;
+    const { imgLayer, handles, state, getRotation, applyRotation } = createOverlayGroup(d.id, d.url, d.opacity||70, latN, latS, lonW, lonE, d.rotation||0);
+    const ov = { id:d.id, name:d.name, url:d.url, imgLayer, handles, visible:d.visible!==false, opacity:d.opacity||70, natW:d.natW, natH:d.natH, lockAspect:d.lockAspect!==false, locked:d.locked||false, rotation:d.rotation||0, getRotation, applyRotation, ...state };
+    if (ov.visible) { imgLayer.addTo(map); if (editMode && !ov.locked) handles.forEach(h => h.addTo(map)); }
+    overlays.push(ov);
+  });
+  renderOverlayList();
+}
+
+function toggleAddMode() {
+  addMode = !addMode;
+  document.getElementById('btn-add').classList.toggle('on', addMode);
+  map.getContainer().style.cursor = addMode ? 'crosshair' : '';
+  if (addMode) toast('Klik di peta untuk menempatkan kavling baru');
+}
+
+function toggleEditMode() {
+  editMode = !editMode;
+  const lbl = document.getElementById('edit-mode-lbl');
+  const btn = document.getElementById('btn-edit-mode');
+  if (lbl) lbl.textContent = editMode ? 'ON' : 'OFF';
+  if (btn) { btn.style.color = editMode ? 'var(--green)' : 'var(--muted)'; btn.style.borderColor = editMode ? 'var(--green)' : 'var(--border)'; }
+
+  // Tent handles
+  Object.values(tentMarkers).forEach(tm => {
+    if (editMode) tm.showHandle?.();
+    else          tm.hideHandle?.();
+  });
+
+  // Overlay handles — respektifkan status locked
+  overlays.forEach(ov => {
+    if (!ov.visible) return;
+    if (editMode && !ov.locked) ov.handles.forEach(h => h.addTo(map));
+    else ov.handles.forEach(h => h.remove());
+  });
+
+  toast(editMode ? '✏️ Mode Edit: ON — handles aktif' : '🔒 Mode Edit: OFF');
+}
+
+async function onMapClick(e) {
+  if (!addMode) return;
+  const n  = tents.filter(t=>t.type==='peserta').length + 1;
+  const id = `T-${pad(n)}`;
+  const nt = mkTent(id, e.latlng.lat, e.latlng.lng, 4, '3×3m', 'peserta');
+  tents.push(nt); drawTent(nt); updateStats();
+  addMode = false;
+  document.getElementById('btn-add').classList.remove('on');
+  map.getContainer().style.cursor = '';
+  await dbUpsertTent(nt);
+  toast(`Kavling ${id} ditambahkan`);
+}
+
+// ══════════════════════════════════════════════
+//   LAYER MANAGEMENT
+// ══════════════════════════════════════════════
+function buildLayerList() {
+  const el = document.getElementById('layer-list');
+  el.innerHTML = AREAS.map(a => `
+    <div class="layer-item">
+      <div class="layer-dot" style="background:${a.color}"></div>
+      <div class="layer-lbl">${a.name}</div>
+      <button class="lbtn" id="vis-${a.id}" onclick="toggleVis('${a.id}')" title="Tampilkan/Sembunyikan">👁</button>
+      <button class="lbtn ${layerLocked[a.id]?'locked':''}" id="lock-${a.id}" onclick="toggleLock('${a.id}')" title="Kunci Layer">🔒</button>
+    </div>`).join('');
+}
+
+function toggleVis(id) {
+  layerVis[id] = !layerVis[id];
+  layerVis[id] ? areaLayers[id].addTo(map) : map.removeLayer(areaLayers[id]);
+  document.getElementById('vis-'+id).style.opacity = layerVis[id] ? '1' : '.3';
+}
+
+function toggleLock(id) {
+  if (!layerVis[id]) { toast('Tampilkan layer terlebih dahulu', true); return; }
+  layerLocked[id] = !layerLocked[id];
+  const btn = document.getElementById('lock-'+id);
+  btn.classList.toggle('locked', layerLocked[id]);
+  toast(layerLocked[id] ? `🔒 Layer "${AREAS.find(a=>a.id===id)?.name}" dikunci` : `🔓 Layer dibuka`);
+}
+
+// ══════════════════════════════════════════════
+//   GPX IMPORT
+// ══════════════════════════════════════════════
+let gpxLayers = {}; // {id: {layer, name}}
+
+function importGPX(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(e.target.result, 'text/xml');
+    const COLORS = ['#e05c2a','#1a7ba8','#9b59b6','#c0392b','#27ae60','#f39c12'];
+    let count = 0;
+
+    // Tracks (trk)
+    xml.querySelectorAll('trk').forEach(trk => {
+      const name = trk.querySelector('name')?.textContent || file.name.replace('.gpx','');
+      const pts = [...trk.querySelectorAll('trkpt')].map(p => [
+        parseFloat(p.getAttribute('lat')), parseFloat(p.getAttribute('lon'))
+      ]).filter(p => !isNaN(p[0]));
+      if (!pts.length) return;
+      const id = 'gpx_' + Date.now() + '_' + count;
+      const color = COLORS[Object.keys(gpxLayers).length % COLORS.length];
+      const layer = L.polyline(pts, { color, weight:3, opacity:0.85 }).addTo(map);
+      gpxLayers[id] = { layer, name };
+      addGPXtoLayerList(id, name, color);
+      count++;
+    });
+
+    // Waypoints (wpt)
+    const wpts = [...xml.querySelectorAll('wpt')];
+    if (wpts.length) {
+      const id = 'gpx_wpt_' + Date.now();
+      const markers = L.layerGroup(wpts.map(w => {
+        const lat = parseFloat(w.getAttribute('lat')), lon = parseFloat(w.getAttribute('lon'));
+        const nm  = w.querySelector('name')?.textContent || '';
+        return L.circleMarker([lat,lon],{radius:5,color:'#e05c2a',fillColor:'#fff',fillOpacity:1,weight:2})
+          .bindTooltip(nm, {permanent:false});
+      })).addTo(map);
+      gpxLayers[id] = { layer:markers, name:`${file.name} — waypoints` };
+      addGPXtoLayerList(id, gpxLayers[id].name, '#e05c2a');
+      count++;
+    }
+
+    input.value='';
+    if (count) { toast(`✅ ${count} layer dari GPX berhasil diimpor`); map.fitBounds(Object.values(gpxLayers).map(g=>g.layer.getBounds ? g.layer.getBounds() : null).filter(Boolean).reduce((a,b)=>a.extend(b))); }
+    else toast('Tidak ada track/waypoint di file GPX ini', true);
+  };
+  reader.readAsText(file);
+}
+
+function addGPXtoLayerList(id, name, color) {
+  const el = document.getElementById('layer-list');
+  const div = document.createElement('div');
+  div.className = 'layer-item'; div.id = 'gpxli-'+id;
+  div.innerHTML = `
+    <div class="layer-dot" style="background:${color};border-radius:50%"></div>
+    <div class="layer-lbl" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</div>
+    <button class="lbtn" id="gpxvis-${id}" onclick="toggleGPXVis('${id}')" title="Tampilkan/Sembunyikan">👁</button>
+    <button class="lbtn" id="gpxlock-${id}" onclick="toggleGPXLock('${id}')" title="Kunci layer">🔓</button>
+    <button class="lbtn" onclick="removeGPXLayer('${id}')" title="Hapus">🗑</button>`;
+  el.appendChild(div);
+}
+
+function toggleGPXVis(id) {
+  const g = gpxLayers[id]; if (!g) return;
+  if (map.hasLayer(g.layer)) { map.removeLayer(g.layer); document.getElementById('gpxvis-'+id).style.opacity='.3'; }
+  else { g.layer.addTo(map); document.getElementById('gpxvis-'+id).style.opacity='1'; }
+}
+
+function toggleGPXLock(id) {
+  const g = gpxLayers[id]; if (!g) return;
+  g.locked = !g.locked;
+  const btn = document.getElementById('gpxlock-'+id);
+  if (btn) {
+    btn.textContent = g.locked ? '🔒' : '🔓';
+    btn.style.color = g.locked ? 'var(--orange)' : '';
+    btn.title = g.locked ? 'Buka kunci layer' : 'Kunci layer';
+  }
+  // GPX polyline tidak punya drag handle, tapi kita disable interaktif saat dikunci
+  g.layer.setStyle({ interactive: !g.locked });
+  toast(g.locked ? `🔒 GPX "${g.name}" dikunci` : `🔓 GPX "${g.name}" dibuka`);
+}
+
+function removeGPXLayer(id) {
+  const g = gpxLayers[id]; if (!g) return;
+  if (map.hasLayer(g.layer)) map.removeLayer(g.layer);
+  delete gpxLayers[id];
+  document.getElementById('gpxli-'+id)?.remove();
+}
+
+// ══════════════════════════════════════════════
+//   QR CODE
+// ══════════════════════════════════════════════
+function genQR(container, tentId, size) {
+  try {
+    new QRCode(container, {
+      text: location.origin + location.pathname + '?tent=' + tentId,
+      width: size, height: size,
+      colorDark:'#2d5631', colorLight:'#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch(e) {
+    container.innerHTML = `<div class="muted" style="font-size:11px">QR: ${tentId}</div>`;
+  }
+}
+
+function showAllQR() {
+  const t = tents[0];
+  const url = location.origin + location.pathname + '?tent=' + t.id;
+  document.getElementById('qr-m-title').textContent = `QR Code — ${t.id} (Contoh)`;
+  document.getElementById('qr-m-url').textContent   = url;
+  const c = document.getElementById('qr-m-code');
+  c.innerHTML = '';
+  genQR(c, t.id, 180);
+  openOv('m-qr');
+}
+
+function printQRPanel() {
+  openOv('m-qr');
+  const t = tents.find(x=>x.id===selTentId);
+  if (!t) return;
+  const url = location.origin + location.pathname + '?tent=' + t.id;
+  document.getElementById('qr-m-title').textContent = `QR Code Kavling ${t.id}`;
+  document.getElementById('qr-m-url').textContent   = url;
+  const c = document.getElementById('qr-m-code');
+  c.innerHTML = '';
+  genQR(c, t.id, 200);
+}
+
+// ══════════════════════════════════════════════
+//   INCIDENT
+// ══════════════════════════════════════════════
+function openIncidentModal() {
+  incType = null;
+  document.querySelectorAll('.inc-opt').forEach(b => b.classList.remove('on'));
+  document.getElementById('inc-desc').value = '';
+  openOv('m-incident');
+}
+
+function pickInc(el, type) {
+  document.querySelectorAll('.inc-opt').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  incType = type;
+}
+
+async function submitIncident() {
+  if (!incType) { toast('Pilih jenis masalah terlebih dahulu', true); return; }
+  const desc = document.getElementById('inc-desc').value;
+  closeOv('m-incident'); closeBSheet();
+  const newInc = await dbInsertIncident(selTentId, incType, desc);
+  if (newInc) {
+    incidents.push(newInc);
+    renderIncList();
+  }
+  toast('🆘 Laporan terkirim ke panitia!');
+}
+
+async function resolveInc(id) {
+  const inc = incidents.find(i => i.id === id);
+  if (inc) {
+    inc.status = 'resolved';
+    renderIncList();
+    await dbResolveIncident(id);
+    toast('✓ Laporan ditandai selesai');
+  }
+}
+
+function renderIncList() {
+  const el = document.getElementById('inc-list');
+  if (!el) return;
+  if (!incidents.length) { el.innerHTML = '<div class="muted">Belum ada laporan</div>'; return; }
+  el.innerHTML = [...incidents].reverse().slice(0,8).map(inc => `
+    <div class="inc-card ${inc.status === 'resolved' ? 'resolved' : ''}">
+      <div class="inc-title">${inc.tentId || '—'} · ${inc.type.replace(/_/g,' ')}</div>
+      <div class="inc-sub">${inc.time}</div>
+      ${inc.desc ? `<div class="muted" style="margin-top:3px">${inc.desc}</div>` : ''}
+      ${inc.status !== 'resolved'
+        ? `<button onclick="resolveInc(${inc.id})" style="margin-top:6px;font-size:11px;padding:2px 8px;border-radius:5px;border:1px solid var(--green);background:none;cursor:pointer;color:var(--green);font-weight:600">✓ Tandai Selesai</button>`
+        : '<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:4px">✓ Selesai</div>'
+      }
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+//   IMPORT CSV
+// ══════════════════════════════════════════════
+function importCSV() { openOv('m-csv'); }
+
+function handleCSV(inp) {
+  const file = inp.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split('\n').filter(l=>l.trim());
+    let imported = 0;
+    lines.slice(1).forEach(line => {
+      const [fam, mbr, tentId] = line.split(',').map(c=>c.trim().replace(/"/g,''));
+      const t = tents.find(x => x.id === tentId);
+      if (t) { t.family = fam; t.members = parseInt(mbr)||1; t.status = 'occupied'; imported++; }
+    });
+    const changed = tents.filter(t => t.status === 'occupied');
+    dbUpsertTents(changed); renderAllTents();
+    document.getElementById('csv-preview').innerHTML = `<div class="badge badge-g">✓ ${imported} peserta berhasil di-import</div>`;
+    toast(`📥 ${imported} peserta berhasil di-import dari CSV`);
+  };
+  reader.readAsText(file);
+}
+
+// ══════════════════════════════════════════════
+//   MODE MANAGEMENT
+// ══════════════════════════════════════════════
+function setMode(m) {
+  if (m === 'admin') { openOv('m-login'); return; }
+  applyMode(m);
+}
+
+function applyMode(m) {
+  mode = m;
+  const modeKeys = ['public','peserta','admin'];
+  document.querySelectorAll('.mode-btn').forEach((b,i) => b.classList.toggle('on', modeKeys[i] === m));
+  const lsb = document.getElementById('lsb');
+  const rsb  = document.getElementById('rsb');
+  lsb.classList.toggle('vis', m === 'admin');
+  if (m !== 'admin') rsb.classList.remove('vis');
+  if (m === 'admin') { renderIncList(); }
+  renderAllTents(); // re-render for drag support
+}
+
+function doLogin() {
+  if (document.getElementById('pin-inp').value === ADMIN_PIN) {
+    closeOv('m-login');
+    document.getElementById('pin-inp').value = '';
+    applyMode('admin');
+    toast('✅ Mode Admin aktif');
+  } else {
+    toast('PIN salah! Coba lagi.', true);
+    document.getElementById('pin-inp').value = '';
+  }
+}
+
+function cancelLogin() {
+  closeOv('m-login');
+  document.getElementById('pin-inp').value = '';
+}
+
+// ══════════════════════════════════════════════
+//   HELPERS
+// ══════════════════════════════════════════════
+function centerMap() { map.setView(CAMP_CENTER, CAMP_ZOOM); }
+function exportPDF()  { window.print(); }
+
+function openOv(id)  { document.getElementById(id).classList.add('show'); }
+function closeOv(id) { document.getElementById(id).classList.remove('show'); }
+
+function toast(msg, err=false) {
+  const w  = document.getElementById('toast-w');
+  const el = document.createElement('div');
+  el.className = 'toast' + (err ? ' err' : '');
+  el.textContent = msg;
+  w.appendChild(el);
+  setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(()=>el.remove(),350); }, 3200);
+}
+
+// ══════════════════════════════════════════════
+//   KEYBOARD
+// ══════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeBSheet();
+    document.getElementById('rsb').classList.remove('vis');
+    if (addMode) { addMode=false; document.getElementById('btn-add')?.classList.remove('on'); map.getContainer().style.cursor=''; }
+    document.querySelectorAll('.ov.show').forEach(o => { if (o.id !== 'm-login') o.classList.remove('show'); });
+  }
+});
+
+// Close modal overlay on backdrop click
+document.querySelectorAll('.ov').forEach(ov => {
+  ov.addEventListener('click', e => {
+    if (e.target === ov && ov.id !== 'm-login') closeOv(ov.id);
+  });
+});
+
+document.addEventListener('DOMContentLoaded', initMap);
+</script>
+</body>
+</html>
