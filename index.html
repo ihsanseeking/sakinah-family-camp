@@ -1120,6 +1120,7 @@ function createOverlayGroup(id, url, opacity, latN, latS, lonW, lonE, initRotati
   const hCenter = L.marker([(latN+latS)/2,(lonW+lonE)/2], { icon:MOVE_ICON(), draggable:true, zIndexOffset:1000 });
 
   let rot = initRotation || 0;
+  const state = { latN, latS, lonW, lonE };
 
   // Posisi handle rotasi: di atas center, jarak tetap dalam meter
   function rotHandleLatLng() {
@@ -1128,7 +1129,6 @@ function createOverlayGroup(id, url, opacity, latN, latS, lonW, lonE, initRotati
     const LAT_M = 111320;
     const LON_M = 111320 * Math.cos(cLat * Math.PI / 180);
     const r     = rot * Math.PI / 180;
-    // Handle berada 40m "atas" overlay, diputar sesuai rot
     const dist  = Math.max(Math.abs(state.latN-state.latS)*LAT_M, Math.abs(state.lonE-state.lonW)*LON_M) * 0.5 + 20;
     return [cLat + (dist * Math.cos(r)) / LAT_M, cLon + (dist * Math.sin(r)) / LON_M];
   }
@@ -1142,12 +1142,9 @@ function createOverlayGroup(id, url, opacity, latN, latS, lonW, lonE, initRotati
     const el = this.getElement();
     if (el && rot !== 0) {
       const cur = el.style.transform || '';
-      // Tambahkan rotate jika belum ada
       el.style.transform = cur.replace(/\s*rotate\([^)]*\)/, '') + ` rotate(${rot}deg)`;
     }
   };
-
-  const state = { latN, latS, lonW, lonE };
 
   function applyRotation(deg) {
     rot = ((deg % 360) + 360) % 360;
@@ -1242,22 +1239,40 @@ function openOverlayModal(editId) {
   openOv('m-overlay');
 }
 
-function handleOverlayFile(input) {
+async function handleOverlayFile(input) {
   const file = input.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
+  const lbl = document.getElementById('ov-file-lbl');
+  lbl.textContent = '⏳ Mengupload…';
+
+  // Baca dimensi gambar dulu
+  const localUrl = await new Promise(res => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.readAsDataURL(file);
+  });
+  const { w, h } = await new Promise(res => {
     const img = new Image();
-    img.onload = () => {
-      _ovPendingUrl = e.target.result;
-      _ovPendingW   = img.naturalWidth;
-      _ovPendingH   = img.naturalHeight;
-      document.getElementById('ov-file-lbl').textContent = `✅ ${file.name} (${img.naturalWidth}×${img.naturalHeight})`;
-      if (!document.getElementById('ov-name').value)
-        document.getElementById('ov-name').value = file.name.replace(/\.[^.]+$/, '');
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
+    img.onload = () => res({ w: img.naturalWidth, h: img.naturalHeight });
+    img.src = localUrl;
+  });
+  _ovPendingW = w; _ovPendingH = h;
+  if (!document.getElementById('ov-name').value)
+    document.getElementById('ov-name').value = file.name.replace(/\.[^.]+$/, '');
+
+  // Coba upload ke Supabase Storage
+  try {
+    const fname = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+    const { data, error } = await sb.storage.from('overlays').upload(fname, file, { upsert: true });
+    if (error) throw error;
+    const { data: pub } = sb.storage.from('overlays').getPublicUrl(fname);
+    _ovPendingUrl = pub.publicUrl;
+    lbl.textContent = `✅ ${file.name} (${w}×${h}) — tersimpan di cloud`;
+  } catch(e) {
+    // Fallback ke base64 lokal jika Storage belum setup
+    _ovPendingUrl = localUrl;
+    lbl.textContent = `✅ ${file.name} (${w}×${h}) — lokal saja`;
+    console.warn('Supabase Storage fallback:', e.message);
+  }
 }
 
 function applyImageOverlay() {
