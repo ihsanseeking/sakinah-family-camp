@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a2e1a">
+  <title>SFC #3 — Sakinah Family Camp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-feature-settings: 'cv01', 'cv05', 'cv09', 'cv11', 'ss03', 'ss07', 'dlig';
+      -webkit-font-smoothing: antialiased;
+      background: #0f1a0f; color: #ffffff;
+      min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden;
+    }
+    .lucide { width:1em; height:1em; stroke-width:2; display:inline-block; vertical-align:middle; flex-shrink:0; }
+
+    /* ── Mountains Background ── */
+    .mountains {
+      position: fixed; bottom:0; left:0; right:0; top:0; z-index:0;
+      pointer-events:none;
+    }
+    .mountains::before {
+      content:''; position:absolute; inset:0;
+      background:url('BG.webp') center/cover no-repeat;
+    }
+    .mountains::after {
+      content:''; position:absolute; inset:0;
+      background:linear-gradient(180deg, rgba(5,20,5,.1) 0%, rgba(5,20,5,.95) 100%);
+    }
+
+    /* ── Hero ── */
+    .hero {
+      position:relative; z-index:1; flex:1;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding: 60px 24px 80px; text-align:center;
+    }
+    .hero-icon {
+      width:96px; height:96px; border-radius:50%;
+      overflow:hidden; margin-bottom:20px;
+      box-shadow:0 0 40px rgba(0,0,0,.2);
+    }
+    .hero-icon img { width:100%; height:100%; object-fit:cover; display:block; }
+    .hero-badge {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:5px 14px; border-radius:100px;
+      background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12);
+      color:rgba(255,255,255,.7); font-size:12px; font-weight:500;
+      margin-bottom:20px; letter-spacing:-.12px; backdrop-filter:blur(4px);
+    }
+    .hero-badge .lucide { width:13px; height:13px; }
+    .hero h1 {
+      font-size:48px; font-weight:700; letter-spacing:-2px; line-height:1.05;
+      margin-bottom:6px; background:linear-gradient(180deg,#fff 60%,rgba(255,255,255,.7));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+      background-clip:text;
+    }
+    .hero h1 span {
+      display:block; font-size:22px; font-weight:400;
+      letter-spacing:-.3px; color:rgba(255,255,255,.5);
+      -webkit-text-fill-color:rgba(255,255,255,.5);
+    }
+    .hero p {
+      font-size:15px; color:rgba(255,255,255,.5); line-height:1.6;
+      max-width:440px; margin-bottom:36px; letter-spacing:-.12px;
+    }
+
+    /* ── Mode Cards ── */
+    .modes { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; margin-bottom:48px; }
+    .mode-card {
+      display:flex; flex-direction:column; align-items:center; gap:10px;
+      width:168px; padding:28px 20px; border-radius:24px;
+      background:#ffffff; border:1px solid #e5e5e5;
+      text-decoration:none; color:#111;
+      transition:all .25s; cursor:pointer;
+    }
+    .mode-card:hover {
+      background:#f5f5f5; border-color:#d0d0d0;
+      transform:translateY(-4px); box-shadow:0 12px 40px rgba(0,0,0,.08);
+    }
+    .mode-card .icon-wrap {
+      width:48px; height:48px; border-radius:16px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .mode-card .icon-wrap.glass { background:#f0f0f0; }
+    .mode-card .icon-wrap.amber { background:#fef3c7; }
+    .mode-card .icon-wrap.green { background:#dcfce7; }
+    .mode-card .lucide { width:24px; height:24px; stroke-width:1.5; }
+    .mode-card .icon-wrap.glass .lucide { color:#555; }
+    .mode-card .icon-wrap.amber .lucide { color:#d97706; }
+    .mode-card .icon-wrap.green .lucide { color:#16a34a; }
+    .mode-card .label { font-weight:600; font-size:15px; color:#111; letter-spacing:-.15px; }
+    .mode-card .desc { font-size:12px; color:#888; font-weight:400; text-align:center; line-height:1.4; }
+
+    /* ── Footer ── */
+    .footer {
+      position:relative; z-index:1;
+      padding:24px; text-align:center; font-size:12px;
+      color:rgba(255,255,255,.35);
+    }
+    .footer .org { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:6px; font-size:13px; color:rgba(255,255,255,.5); }
+    .footer .org img { width:28px; height:28px; object-fit:contain; }
+
+    /* ── Responsive ── */
+    @media (max-width:820px) {
+      .hero h1 { font-size:40px; }
+      .hero h1 span { font-size:20px; }
+      .hero { padding: 40px 20px 60px; }
+    }
+    @media (max-width:600px) {
+      .hero h1 { font-size:34px; letter-spacing:-1.5px; }
+      .hero h1 span { font-size:18px; }
+      .mode-card { width:100%; max-width:280px; padding:20px 16px; flex-direction:row; text-align:left; }
+      .mode-card .icon-wrap { width:40px; height:40px; border-radius:12px; flex-shrink:0; }
+      .mode-card .lucide { width:20px; height:20px; }
+      .modes { flex-direction:column; align-items:center; gap:10px; }
+      .hero-badge { font-size:11px; padding:4px 12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:90vw; }
+    }
+    @media (max-width:380px) {
+      .hero h1 { font-size:28px; }
+      .hero h1 span { font-size:16px; }
+      .hero-icon { width:72px; height:72px; }
+      .hero p { font-size:13px; }
+      .hero { padding: 24px 16px 40px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="mountains"></div>
+
+  <div class="hero">
+    <div class="hero-icon"><img src="Logo%20Sakinah%20Family%20Camp.png" alt="SFC #3"></div>
+    <div class="hero-badge"><i data-lucide="calendar"></i> Bukit Baros &middot; Sukabumi &middot; Jawa Barat &middot; 2026</div>
+    <h1>
+      Sakinah Family Camp #3
+      <span>Temukan Tenda Keluarga Anda</span>
+    </h1>
+    <p>Peta interaktif kavling tenda. Lihat denah, pilih lokasi, dan klaim tenda keluarga Anda di area perkemahan.</p>
+
+    <div class="modes">
+      <a class="mode-card" href="index.html">
+        <div class="icon-wrap glass"><i data-lucide="eye"></i></div>
+        <div class="label">Jelajahi Peta</div>
+        <div class="desc">Lihat denah kavling dan fasilitas camp</div>
+      </a>
+      <a class="mode-card" href="index.html?mode=peserta">
+        <div class="icon-wrap amber"><i data-lucide="tent"></i></div>
+        <div class="label">Pilih Kavling</div>
+        <div class="desc">Klaim tenda keluarga Anda sekarang</div>
+      </a>
+      <a class="mode-card" href="index.html?mode=admin">
+        <div class="icon-wrap green"><i data-lucide="settings"></i></div>
+        <div class="label">Panel Panitia</div>
+        <div class="desc">Kelola data peserta dan laporan</div>
+      </a>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    Sakinah Family Camp #3 &mdash; Bukit Baros &middot; Sukabumi &middot; Jawa Barat &middot; 2026
+    <div class="org"><img src="MAB.png" alt="MAB"> <span>Organizer: Majlis Ayah Bunda</span></div>
+  </div>
+
+  <script>lucide.createIcons();</script>
+</body>
+</html>

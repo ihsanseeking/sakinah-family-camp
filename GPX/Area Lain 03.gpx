@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx creator="StravaGPX" version="1.1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+ <metadata>
+  <name>Area Lain 03</name>
+  <desc>Area Luas Bawah</desc>
+  <author>
+   <name>Ihsan Faturohman</name>
+   <link href="https://www.strava.com/athletes/72094822"/>
+  </author>
+  <copyright author="OpenStreetMap contributors">
+   <year>2020</year>
+   <license>https://www.openstreetmap.org/copyright</license>
+  </copyright>
+  <link href="https://www.strava.com/routes/3504497489994407036"/>
+ </metadata>
+ <trk>
+  <name>Area Lain 03</name>
+  <desc>Area Luas Bawah</desc>
+  <link href="https://www.strava.com/routes/3504497489994407036"/>
+  <type>walking</type>
+  <trkseg>
+   <trkpt lat="-6.966740000000001" lon="106.95831000000001">
+    <ele>515.7900000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.96668" lon="106.95836000000001">
+    <ele>517.1600000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.966710000000001" lon="106.95858000000001">
+    <ele>516.35</ele>
+   </trkpt>
+   <trkpt lat="-6.96689" lon="106.95858000000001">
+    <ele>512.6800000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.966780000000001" lon="106.95831000000001">
+    <ele>515.44</ele>
+   </trkpt>
+  </trkseg>
+ </trk>
+</gpx>

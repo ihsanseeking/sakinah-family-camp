@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx creator="StravaGPX" version="1.1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+ <metadata>
+  <name>Rute dari Jalan besar ke Area SFC</name>
+  <author>
+   <name>Ihsan Faturohman</name>
+   <link href="https://www.strava.com/athletes/72094822"/>
+  </author>
+  <copyright author="OpenStreetMap contributors">
+   <year>2020</year>
+   <license>https://www.openstreetmap.org/copyright</license>
+  </copyright>
+  <link href="https://www.strava.com/routes/3504501222037618300"/>
+ </metadata>
+ <trk>
+  <name>Rute dari Jalan besar ke Area SFC</name>
+  <link href="https://www.strava.com/routes/3504501222037618300"/>
+  <type>walking</type>
+  <trkseg>
+   <trkpt lat="-6.958030000000001" lon="106.95946">
+    <ele>529.7900000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.9583200000000005" lon="106.95964000000001">
+    <ele>529.7900000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.9585300000000005" lon="106.95967">
+    <ele>542.1600000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.95858" lon="106.95969000000001">
+    <ele>542.1600000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.9586500000000004" lon="106.95985">
+    <ele>542.1600000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.958690000000001" lon="106.96003">
+    <ele>542.1600000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.95894" lon="106.96006000000001">
+    <ele>542.85</ele>
+   </trkpt>
+   <trkpt lat="-6.95943" lon="106.96001000000001">
+    <ele>542.85</ele>
+   </trkpt>
+   <trkpt lat="-6.95952" lon="106.96002000000001">
+    <ele>542.85</ele>
+   </trkpt>
+   <trkpt lat="-6.960260000000001" lon="106.9603">
+    <ele>545.95</ele>
+   </trkpt>
+   <trkpt lat="-6.9608300000000005" lon="106.96024000000001">
+    <ele>545.95</ele>
+   </trkpt>
+   <trkpt lat="-6.9614400000000005" lon="106.96024000000001">
+    <ele>545.95</ele>
+   </trkpt>
+   <trkpt lat="-6.9621200000000005" lon="106.96018000000001">
+    <ele>545.95</ele>
+   </trkpt>
+   <trkpt lat="-6.96257" lon="106.96007">
+    <ele>545.95</ele>
+   </trkpt>
+   <trkpt lat="-6.962940000000001" lon="106.9599">
+    <ele>545.95</ele>
+   </trkpt>
+   <trkpt lat="-6.96316" lon="106.95967">
+    <ele>545.95</ele>
+   </trkpt>
+   <trkpt lat="-6.96318" lon="106.95949">
+    <ele>545.95</ele>
+   </trkpt>
+   <trkpt lat="-6.9632000000000005" lon="106.95920000000001">
+    <ele>545.95</ele>
+   </trkpt>
+   <trkpt lat="-6.96325" lon="106.95918">
+    <ele>545.95</ele>
+   </trkpt>
+   <trkpt lat="-6.96384" lon="106.95914">
+    <ele>523.0</ele>
+   </trkpt>
+   <trkpt lat="-6.96457" lon="106.95934000000001">
+    <ele>523.0</ele>
+   </trkpt>
+   <trkpt lat="-6.9648200000000005" lon="106.95937">
+    <ele>523.0</ele>
+   </trkpt>
+   <trkpt lat="-6.9655000000000005" lon="106.95938000000001">
+    <ele>523.0</ele>
+   </trkpt>
+   <trkpt lat="-6.96595" lon="106.95931">
+    <ele>523.0</ele>
+   </trkpt>
+   <trkpt lat="-6.96614" lon="106.95917000000001">
+    <ele>523.0</ele>
+   </trkpt>
+   <trkpt lat="-6.9662500000000005" lon="106.95902000000001">
+    <ele>523.0</ele>
+   </trkpt>
+   <trkpt lat="-6.96635" lon="106.95870000000001">
+    <ele>523.0</ele>
+   </trkpt>
+   <trkpt lat="-6.9663200000000005" lon="106.95844000000001">
+    <ele>523.0</ele>
+   </trkpt>
+   <trkpt lat="-6.96597" lon="106.95784">
+    <ele>523.0</ele>
+   </trkpt>
+   <trkpt lat="-6.965840000000001" lon="106.95769000000001">
+    <ele>523.0</ele>
+   </trkpt>
+  </trkseg>
+ </trk>
+</gpx>

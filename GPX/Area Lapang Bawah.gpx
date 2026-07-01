@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx creator="StravaGPX" version="1.1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+ <metadata>
+  <name>Area Lapang Bawah</name>
+  <author>
+   <name>Ihsan Faturohman</name>
+   <link href="https://www.strava.com/athletes/72094822"/>
+  </author>
+  <copyright author="OpenStreetMap contributors">
+   <year>2020</year>
+   <license>https://www.openstreetmap.org/copyright</license>
+  </copyright>
+  <link href="https://www.strava.com/routes/3504501222019869308"/>
+ </metadata>
+ <trk>
+  <name>Area Lapang Bawah</name>
+  <link href="https://www.strava.com/routes/3504501222019869308"/>
+  <type>walking</type>
+  <trkseg>
+   <trkpt lat="-6.96614" lon="106.95736000000001">
+    <ele>513.6800000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.96635" lon="106.95737000000001">
+    <ele>512.47</ele>
+   </trkpt>
+   <trkpt lat="-6.966340000000001" lon="106.95727000000001">
+    <ele>511.6</ele>
+   </trkpt>
+   <trkpt lat="-6.965960000000001" lon="106.95721">
+    <ele>511.28000000000003</ele>
+   </trkpt>
+   <trkpt lat="-6.96595" lon="106.95734">
+    <ele>514.83</ele>
+   </trkpt>
+   <trkpt lat="-6.966100000000001" lon="106.95736000000001">
+    <ele>514.12</ele>
+   </trkpt>
+  </trkseg>
+ </trk>
+</gpx>

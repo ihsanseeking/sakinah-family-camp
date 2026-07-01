@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx creator="StravaGPX" version="1.1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+ <metadata>
+  <name>Area Lain 01</name>
+  <desc>Area memanjang</desc>
+  <author>
+   <name>Ihsan Faturohman</name>
+   <link href="https://www.strava.com/athletes/72094822"/>
+  </author>
+  <copyright author="OpenStreetMap contributors">
+   <year>2020</year>
+   <license>https://www.openstreetmap.org/copyright</license>
+  </copyright>
+  <link href="https://www.strava.com/routes/3504502110735126496"/>
+ </metadata>
+ <trk>
+  <name>Area Lain 01</name>
+  <desc>Area memanjang</desc>
+  <link href="https://www.strava.com/routes/3504502110735126496"/>
+  <type>walking</type>
+  <trkseg>
+   <trkpt lat="-6.96637" lon="106.95803000000001">
+    <ele>519.6500000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.966310000000001" lon="106.95809000000001">
+    <ele>520.8000000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.96644" lon="106.95822000000001">
+    <ele>519.86</ele>
+   </trkpt>
+   <trkpt lat="-6.966500000000001" lon="106.95817000000001">
+    <ele>518.96</ele>
+   </trkpt>
+   <trkpt lat="-6.9664" lon="106.95804000000001">
+    <ele>518.8000000000001</ele>
+   </trkpt>
+  </trkseg>
+ </trk>
+</gpx>

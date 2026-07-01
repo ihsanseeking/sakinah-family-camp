@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx creator="StravaGPX" version="1.1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+ <metadata>
+  <name>Area Kamar Ganti</name>
+  <desc>ada ikhwan Akhwat</desc>
+  <author>
+   <name>Ihsan Faturohman</name>
+   <link href="https://www.strava.com/athletes/72094822"/>
+  </author>
+  <copyright author="OpenStreetMap contributors">
+   <year>2020</year>
+   <license>https://www.openstreetmap.org/copyright</license>
+  </copyright>
+  <link href="https://www.strava.com/routes/3504497489998413948"/>
+ </metadata>
+ <trk>
+  <name>Area Kamar Ganti</name>
+  <desc>ada ikhwan Akhwat</desc>
+  <link href="https://www.strava.com/routes/3504497489998413948"/>
+  <type>walking</type>
+  <trkseg>
+   <trkpt lat="-6.96597" lon="106.95752">
+    <ele>519.5600000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.965920000000001" lon="106.95745000000001">
+    <ele>518.71</ele>
+   </trkpt>
+   <trkpt lat="-6.96588" lon="106.95750000000001">
+    <ele>520.48</ele>
+   </trkpt>
+   <trkpt lat="-6.96595" lon="106.95756000000002">
+    <ele>521.34</ele>
+   </trkpt>
+   <trkpt lat="-6.965980000000001" lon="106.95753">
+    <ele>520.8000000000001</ele>
+   </trkpt>
+  </trkseg>
+ </trk>
+</gpx>

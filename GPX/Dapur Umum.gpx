@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx creator="StravaGPX" version="1.1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+ <metadata>
+  <name>Dapur Umum</name>
+  <desc>Menempel dan mengunakan sebagian kecil Area Aula</desc>
+  <author>
+   <name>Ihsan Faturohman</name>
+   <link href="https://www.strava.com/athletes/72094822"/>
+  </author>
+  <copyright author="OpenStreetMap contributors">
+   <year>2020</year>
+   <license>https://www.openstreetmap.org/copyright</license>
+  </copyright>
+  <link href="https://www.strava.com/routes/3504497489989807228"/>
+ </metadata>
+ <trk>
+  <name>Dapur Umum</name>
+  <desc>Menempel dan mengunakan sebagian kecil Area Aula</desc>
+  <link href="https://www.strava.com/routes/3504497489989807228"/>
+  <type>walking</type>
+  <trkseg>
+   <trkpt lat="-6.966050000000001" lon="106.95769000000001">
+    <ele>521.9200000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.966130000000001" lon="106.95774000000002">
+    <ele>521.46</ele>
+   </trkpt>
+   <trkpt lat="-6.966150000000001" lon="106.95769000000001">
+    <ele>519.8000000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.966080000000001" lon="106.95762">
+    <ele>521.19</ele>
+   </trkpt>
+   <trkpt lat="-6.9660400000000005" lon="106.95766">
+    <ele>522.88</ele>
+   </trkpt>
+  </trkseg>
+ </trk>
+</gpx>

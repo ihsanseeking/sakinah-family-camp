@@ -3,67 +3,108 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <meta name="theme-color" content="#2d5631">
+  <meta name="theme-color" content="#ffffff">
   <title>SFC #3 — Peta Kavling Tenda</title>
-  <link rel="manifest" href="#" crossorigin="use-credentials">
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+  <!-- html2pdf -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
   <!-- QRCode -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- JSZip (KMZ support) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <!-- Distortable Image Overlay -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-distortableimage/dist/leaflet.distortableimage.css"/>
-  <script src="https://unpkg.com/leaflet-distortableimage/dist/leaflet.distortableimage.js"></script>
   <style>
     /* ── Design System ── */
     :root {
-      --green:        #2d5631;
-      --green-l:      #4a7c4e;
-      --green-bg:     #e8f0e9;
-      --orange:       #c87137;
-      --orange-l:     #d9885a;
-      --orange-bg:    #fae6d5;
-      --blue:         #1a7ba8;
-      --blue-bg:      #e3f2f9;
-      --red:          #c0392b;
-      --red-bg:       #fde8e8;
-      --bg:           #f2ede4;
-      --sand:         #e4dcc8;
-      --white:        #fdf9f4;
-      --border:       #e0d8cc;
-      --text:         #2c2825;
-      --muted:        #7a7470;
-      --shadow:       0 2px 12px rgba(0,0,0,.10);
-      --radius:       10px;
+      --canvas:        #ffffff;
+      --surface-1:     #f5f5f5;
+      --surface-2:     #ebebeb;
+      --ink:           #111111;
+      --ink-muted:     #999999;
+      --hairline:      #e5e5e5;
+      --hairline-soft: #f0f0f0;
+      --primary:       #111111;
+      --on-primary:    #ffffff;
+      --accent-blue:   #0099ff;
+      --green:         #22c55e;
+      --green-bg:      #f0fdf4;
+      --orange:        #f59e0b;
+      --orange-bg:     #fffbeb;
+      --blue:          #3b82f6;
+      --blue-bg:       #eff6ff;
+      --red:           #ef4444;
+      --red-bg:        #fef2f2;
+      /* Radius */
+      --radius-xs:     4px;
+      --radius-sm:     6px;
+      --radius-md:     10px;
+      --radius-lg:     15px;
+      --radius-xl:     20px;
+      --radius-xxl:    30px;
+      --radius-pill:   100px;
+      --radius-full:   9999px;
+      /* Shadows */
+      --shadow-sm:     0 1px 3px rgba(0,0,0,.08);
+      --shadow-md:     0 4px 20px rgba(0,0,0,.10);
+      --shadow-lg:     0 8px 30px rgba(0,0,0,.12);
+      --ring-blue:     0 0 0 2px rgba(0,153,255,.25);
+      /* Spacing */
+      --space-xxs:     4px;
+      --space-xs:      8px;
+      --space-sm:      12px;
+      --space-md:      15px;
+      --space-lg:      20px;
+      --space-xl:      30px;
+      --space-xxl:     40px;
+      --space-section: 96px;
     }
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:var(--bg); color:var(--text); height:100vh; overflow:hidden; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-feature-settings: 'cv01', 'cv05', 'cv09', 'cv11', 'ss03', 'ss07', 'dlig'; -webkit-font-smoothing:antialiased; background:var(--canvas); color:var(--ink); height:100vh; overflow:hidden; }
 
     /* ── Loading ── */
     #loading {
-      position:fixed; inset:0; background:var(--bg); z-index:9999;
+      position:fixed; inset:0; background:var(--canvas); z-index:9999;
       display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
     }
-    #loading .spin { width:44px; height:44px; border:4px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin .7s linear infinite; }
-    #loading p { font-size:14px; color:var(--muted); }
+    #loading .spin { width:44px; height:44px; border:4px solid var(--hairline); border-top-color:var(--ink); border-radius:50%; animation:spin .7s linear infinite; }
+    #loading p { font-size:14px; color:var(--ink-muted); }
     @keyframes spin { to { transform:rotate(360deg); } }
 
     /* ── Header ── */
     #hdr {
       position:fixed; top:0; left:0; right:0; height:56px; z-index:1000;
-      background:var(--green); display:flex; align-items:center; padding:0 14px; gap:12px;
-      box-shadow:0 2px 8px rgba(0,0,0,.25);
+      background:var(--canvas); display:flex; align-items:center; padding:0 16px; gap:12px;
+      border-bottom:1px solid var(--hairline);
     }
-    .hdr-logo { width:38px; height:38px; border-radius:50%; background:var(--white); display:flex; align-items:center; justify-content:center; font-weight:800; color:var(--green); font-size:11px; flex-shrink:0; line-height:1.2; text-align:center; }
+    .hdr-logo { width:38px; height:38px; border-radius:var(--radius-full); background:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:700; color:var(--on-primary); font-size:10px; flex-shrink:0; line-height:1.2; text-align:center; letter-spacing:-.3px; }
     .hdr-info { flex:1; min-width:0; }
-    .hdr-name { color:#fff; font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .hdr-sub  { color:rgba(255,255,255,.65); font-size:11px; }
+    .hdr-name { color:var(--ink); font-weight:600; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:-.3px; }
+    .hdr-sub  { color:var(--ink-muted); font-size:12px; font-weight:400; }
 
     .mode-wrap { display:flex; gap:4px; }
-    .mode-btn  { padding:5px 10px; border-radius:6px; border:1px solid rgba(255,255,255,.3); background:transparent; color:rgba(255,255,255,.7); font-size:12px; cursor:pointer; transition:all .15s; white-space:nowrap; }
-    .mode-btn.on { background:rgba(255,255,255,.22); color:#fff; border-color:rgba(255,255,255,.6); }
+    .mode-btn  { padding:5px 12px; border-radius:var(--radius-pill); border:1px solid var(--hairline); background:transparent; color:var(--ink-muted); font-size:12px; font-weight:500; cursor:pointer; transition:all .15s; white-space:nowrap; }
+    .mode-btn:hover { background:var(--surface-1); }
+    .mode-btn.on { background:var(--surface-2); color:var(--ink); border-color:var(--hairline); }
+
+    #offline-banner { position:fixed; top:56px; left:0; right:0; z-index:9998; background:var(--orange); color:#fff; text-align:center; padding:6px 12px; font-size:12px; font-weight:500; display:none; }
+    .notif-btn { position:relative; width:36px; height:36px; border:none; border-radius:var(--radius-full); background:transparent; color:var(--ink-muted); cursor:pointer; display:none; align-items:center; justify-content:center; transition:all .15s; flex-shrink:0; }
+    .notif-btn:hover { background:var(--surface-1); color:var(--ink); }
+    .notif-btn.active { color:var(--accent-blue); }
+    .notif-badge { position:absolute; top:2px; right:2px; min-width:16px; height:16px; border-radius:var(--radius-full); background:var(--red); color:#fff; font-size:9px; font-weight:700; display:none; align-items:center; justify-content:center; padding:0 4px; line-height:1; }
 
     /* ── Layout ── */
     #app { display:flex; height:100vh; padding-top:56px; }
@@ -72,59 +113,63 @@
 
     /* ── Left Sidebar ── */
     #lsb {
-      width:258px; background:var(--white); border-right:1px solid var(--border);
+      width:258px; background:var(--canvas); border-right:1px solid var(--hairline);
       display:none; flex-direction:column; overflow-y:auto; overflow-x:hidden; z-index:900;
     }
     #lsb.vis { display:flex; }
 
-    .sb-section { padding:12px; border-bottom:1px solid var(--border); }
-    .sb-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin-bottom:8px; }
+    .sb-section { padding:var(--space-sm); border-bottom:1px solid var(--hairline); }
+    .sb-title { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.8px; color:var(--ink-muted); margin-bottom:8px; }
 
     .stats-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
-    .stat-box { background:var(--bg); border-radius:8px; padding:8px 4px; text-align:center; }
-    .stat-val { font-size:22px; font-weight:800; }
-    .stat-lbl { font-size:10px; color:var(--muted); margin-top:1px; }
+    .stat-box { background:var(--surface-1); border-radius:var(--radius-md); padding:10px 4px; text-align:center; }
+    .stat-val { font-size:22px; font-weight:700; letter-spacing:-.5px; color:var(--ink); }
+    .stat-lbl { font-size:10px; font-weight:500; color:var(--ink-muted); margin-top:2px; text-transform:uppercase; letter-spacing:.5px; }
 
-    .layer-item { display:flex; align-items:center; gap:7px; padding:6px 8px; border-radius:7px; background:var(--bg); margin-bottom:4px; }
-    .layer-dot { width:11px; height:11px; border-radius:2px; flex-shrink:0; }
-    .layer-lbl { font-size:12px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .lbtn { width:24px; height:24px; border:none; background:transparent; cursor:pointer; border-radius:5px; font-size:13px; display:flex; align-items:center; justify-content:center; transition:background .1s; }
-    .lbtn:hover { background:var(--sand); }
+    .layer-item { display:flex; align-items:center; gap:7px; padding:6px 8px; border-radius:var(--radius-sm); background:var(--surface-1); margin-bottom:4px; }
+    .layer-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+    .layer-lbl { font-size:12px; font-weight:500; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .lbtn { width:26px; height:26px; border:none; background:transparent; cursor:pointer; border-radius:var(--radius-xs); font-size:13px; display:flex; align-items:center; justify-content:center; transition:background .1s; color:var(--ink-muted); }
+    .lbtn:hover { background:var(--surface-2); }
     .lbtn.locked { color:var(--orange); }
 
-    .tool-btn { width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:12.5px; cursor:pointer; text-align:left; margin-bottom:4px; display:flex; align-items:center; gap:8px; transition:all .13s; }
-    .tool-btn:hover { background:var(--sand); }
-    .tool-btn.on { background:var(--green); color:#fff; border-color:var(--green); }
+    .lucide { width:1em; height:1em; stroke-width:2; display:inline-block; vertical-align:middle; flex-shrink:0; }
+    .tool-btn { width:100%; padding:8px 10px; border-radius:var(--radius-md); border:1px solid var(--hairline); background:var(--surface-1); color:var(--ink); font-size:12.5px; font-weight:500; cursor:pointer; text-align:left; margin-bottom:4px; display:flex; align-items:center; gap:8px; transition:all .13s; }
+    .tool-btn:hover { background:var(--surface-2); }
+    .tool-btn.on { background:var(--primary); color:var(--on-primary); border-color:var(--primary); }
     .tool-btn .ico { font-size:15px; width:20px; }
+    .tool-btn .lucide { width:16px; height:16px; }
     .tool-btn.danger { color:var(--red); }
 
-    .inc-card { background:var(--red-bg); border-radius:8px; padding:8px 10px; margin-bottom:6px; }
+    .notif-empty { text-align:center; padding:32px 0; color:var(--ink-muted); font-size:13px; }
+    .notif-empty .lucide { width:32px; height:32px; margin-bottom:8px; stroke-width:1.5; }
+    .inc-card { background:var(--red-bg); border-radius:var(--radius-md); padding:10px 12px; margin-bottom:6px; border:1px solid transparent; }
     .inc-card.resolved { background:var(--green-bg); }
     .inc-title { font-size:12px; font-weight:600; }
-    .inc-sub { font-size:11px; color:var(--muted); margin-top:1px; }
+    .inc-sub { font-size:11px; color:var(--ink-muted); margin-top:2px; }
 
     /* ── Right Detail Panel ── */
     #rsb {
-      width:270px; background:var(--white); border-left:1px solid var(--border);
+      width:270px; background:var(--canvas); border-left:1px solid var(--hairline);
       display:none; flex-direction:column; overflow-y:auto; z-index:900;
     }
     #rsb.vis { display:flex; }
 
-    .dp-hdr { padding:16px; background:var(--green); color:#fff; }
-    .dp-id  { font-size:26px; font-weight:800; }
-    .dp-sub { font-size:12px; opacity:.8; }
+    .dp-hdr { padding:16px; background:var(--surface-1); color:var(--ink); border-bottom:1px solid var(--hairline); }
+    .dp-id  { font-size:26px; font-weight:700; letter-spacing:-1px; }
+    .dp-sub { font-size:12px; color:var(--ink-muted); margin-top:2px; }
 
-    .dp-sec { padding:12px 14px; border-bottom:1px solid var(--border); }
-    .dp-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:6px; }
-    .dp-val { font-size:14px; font-weight:500; }
+    .dp-sec { padding:12px 16px; border-bottom:1px solid var(--hairline); }
+    .dp-lbl { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.8px; color:var(--ink-muted); margin-bottom:8px; }
+    .dp-val { font-size:15px; font-weight:500; }
 
-    .spec-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
-    .spec-box { background:var(--bg); border-radius:7px; padding:9px; }
-    .spec-v { font-size:17px; font-weight:800; color:var(--green); }
-    .spec-k { font-size:10px; color:var(--muted); }
+    .spec-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .spec-box { background:var(--surface-1); border-radius:var(--radius-md); padding:10px; }
+    .spec-v { font-size:18px; font-weight:700; letter-spacing:-.5px; color:var(--ink); }
+    .spec-k { font-size:10px; font-weight:500; color:var(--ink-muted); text-transform:uppercase; letter-spacing:.5px; margin-top:1px; }
 
-    .badge { display:inline-flex; align-items:center; gap:4px; padding:2px 9px; border-radius:20px; font-size:11px; font-weight:700; }
-    .badge-g { background:#e8f5e9; color:#2e7d32; }
+    .badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:var(--radius-pill); font-size:11px; font-weight:600; }
+    .badge-g { background:var(--green-bg); color:var(--green); }
     .badge-o { background:var(--orange-bg); color:var(--orange); }
     .badge-b { background:var(--blue-bg); color:var(--blue); }
     .badge-r { background:var(--red-bg); color:var(--red); }
@@ -132,18 +177,19 @@
     #qr-box { display:flex; justify-content:center; padding:10px 0; }
 
     /* ── Buttons ── */
-    .btn { padding:8px 14px; border-radius:8px; border:none; font-size:13px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; justify-content:center; transition:all .13s; }
-    .btn-p  { background:var(--green); color:#fff; }
-    .btn-p:hover { background:var(--green-l); }
+    .btn { padding:8px 16px; border-radius:var(--radius-pill); border:none; font-size:13px; font-weight:500; cursor:pointer; display:inline-flex; align-items:center; gap:6px; justify-content:center; transition:all .13s; letter-spacing:-.14px; min-height:44px; }
+    .btn-p  { background:var(--primary); color:var(--on-primary); }
+    .btn-p:hover { background:#333; }
     .btn-o  { background:var(--orange); color:#fff; }
-    .btn-o:hover { background:var(--orange-l); }
+    .btn-o:hover { background:#d97706; }
     .btn-r  { background:var(--red); color:#fff; }
-    .btn-gh { background:transparent; border:1px solid var(--border); color:var(--text); }
-    .btn-gh:hover { background:var(--sand); }
+    .btn-r:hover { background:#dc2626; }
+    .btn-gh { background:transparent; border:1px solid var(--hairline); color:var(--ink); }
+    .btn-gh:hover { background:var(--surface-1); }
     .btn-w  { width:100%; }
-    .btn-lg { padding:13px 14px; font-size:15px; }
+    .btn-lg { padding:13px 20px; font-size:15px; }
 
-    .btn-row { display:flex; gap:7px; }
+    .btn-row { display:flex; gap:8px; }
     .btn-row .btn { flex:1; }
 
     /* ── Map overlays ── */
@@ -155,17 +201,33 @@
 
     .map-legend {
       position:absolute; bottom:20px; left:50%; transform:translateX(-50%);
-      background:rgba(253,249,244,.95); border-radius:12px; padding:8px 16px;
-      display:flex; gap:14px; z-index:500; box-shadow:var(--shadow);
-      border:1px solid var(--border);
+      background:var(--canvas); border-radius:var(--radius-xl);
+      padding:10px 20px; display:flex; gap:16px; z-index:500;
+      box-shadow:var(--shadow-sm); border:1px solid var(--hairline);
     }
-    .leg-item { display:flex; align-items:center; gap:5px; font-size:12px; }
-    .leg-dot  { width:11px; height:11px; border-radius:2px; }
+    .leg-item { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:500; color:var(--ink-muted); }
+    .leg-dot  { width:10px; height:10px; border-radius:2px; }
+
+    .map-toolkit {
+      position:absolute; top:8px; left:50%; transform:translateX(-50%); z-index:500;
+      background:var(--canvas); border-radius:var(--radius-pill);
+      padding:4px 6px; display:none; gap:2px;
+      box-shadow:var(--shadow-sm); border:1px solid var(--hairline);
+    }
+    .map-toolkit.vis { display:flex; }
+    .toolkit-item {
+      width:34px; height:34px; border-radius:var(--radius-full); display:flex;
+      align-items:center; justify-content:center; cursor:pointer; transition:all .15s;
+      color:var(--ink-muted); border:none; background:transparent;
+    }
+    .toolkit-item:hover { background:var(--surface-1); color:var(--ink); }
+    .toolkit-item .lucide { width:16px; height:16px; }
+    .toolkit-item.active { background:var(--surface-2); color:var(--ink); }
 
     .map-fab {
-      position:absolute; right:14px; bottom:64px; z-index:500;
-      width:46px; height:46px; border-radius:50%; background:var(--green);
-      color:#fff; border:none; box-shadow:0 3px 12px rgba(0,0,0,.22);
+      position:absolute; right:16px; bottom:64px; z-index:500;
+      width:46px; height:46px; border-radius:var(--radius-full); background:var(--primary);
+      color:var(--on-primary); border:none; box-shadow:var(--shadow-md);
       cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center;
       transition:transform .15s;
     }
@@ -174,44 +236,45 @@
     /* ── Bottom Sheet ── */
     #bsheet {
       position:fixed; bottom:0; left:0; right:0; z-index:2000;
-      background:var(--white); border-radius:20px 20px 0 0;
-      box-shadow:0 -6px 30px rgba(0,0,0,.18);
-      transform:translateY(105%); transition:transform .3s cubic-bezier(.32,.72,0,1);
+      background:var(--canvas); border-radius:var(--radius-xxl) var(--radius-xxl) 0 0;
+      box-shadow:0 -4px 30px rgba(0,0,0,.12);
+      transform:translateY(105%); transition:transform .35s cubic-bezier(.32,.72,0,1);
       padding:16px 20px 32px; max-height:82vh; overflow-y:auto;
     }
     #bsheet.show { transform:translateY(0); }
-    .drag-h { width:44px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 16px; }
+    .drag-h { width:44px; height:4px; background:var(--surface-2); border-radius:2px; margin:0 auto 16px; }
 
-    .help-fab { width:100%; padding:15px; background:var(--red); color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; margin-top:12px; transition:background .15s; }
-    .help-fab:hover { background:#e74c3c; }
+    .help-fab { width:100%; padding:14px 20px; background:var(--red); color:#fff; border:none; border-radius:var(--radius-pill); font-size:14px; font-weight:600; cursor:pointer; margin-top:12px; transition:background .15s; letter-spacing:-.14px; }
+    .help-fab:hover { background:#dc2626; }
 
     /* ── Modals ── */
-    .ov { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:3000; display:none; align-items:center; justify-content:center; padding:16px; }
+    .ov { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:3000; display:none; align-items:center; justify-content:center; padding:16px; }
     .ov.show { display:flex; }
-    .modal { background:var(--white); border-radius:16px; padding:22px; width:100%; max-width:390px; max-height:90vh; overflow-y:auto; position:relative; }
-    .modal-title { font-size:17px; font-weight:700; margin-bottom:14px; }
-    .modal-close { position:absolute; top:16px; right:16px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--muted); line-height:1; }
+    .modal { background:var(--canvas); border-radius:var(--radius-xl); padding:24px; width:100%; max-width:390px; max-height:90vh; overflow-y:auto; position:relative; box-shadow:var(--shadow-lg); }
+    .modal-title { font-size:18px; font-weight:600; margin-bottom:16px; letter-spacing:-.3px; }
+    .modal-close { position:absolute; top:16px; right:16px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--ink-muted); line-height:1; }
 
     /* ── Form ── */
-    .fg { margin-bottom:11px; }
-    .fg label { display:block; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:4px; }
-    .fi { width:100%; padding:8px 11px; border:1px solid var(--border); border-radius:8px; font-size:14px; background:var(--bg); color:var(--text); transition:border-color .15s; }
-    .fi:focus { outline:none; border-color:var(--green); }
-    textarea.fi { resize:vertical; min-height:70px; }
+    .fg { margin-bottom:12px; }
+    .fg label { display:block; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.8px; color:var(--ink-muted); margin-bottom:6px; }
+    .fi { width:100%; padding:10px 12px; border:1px solid var(--hairline); border-radius:var(--radius-md); font-size:14px; background:var(--surface-1); color:var(--ink); transition:border-color .15s, box-shadow .15s; font-family:'Inter',-apple-system,sans-serif; font-weight:400; }
+    .fi:focus { outline:none; border-color:var(--accent-blue); box-shadow:var(--ring-blue); }
+    .fi::placeholder { color:var(--ink-muted); }
+    textarea.fi { resize:vertical; min-height:72px; }
     select.fi { cursor:pointer; }
     .fi-row { display:flex; gap:8px; }
     .fi-row .fg { flex:1; }
 
     /* ── Incident grid ── */
-    .inc-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom:12px; }
-    .inc-opt { padding:10px 6px; border:2px solid var(--border); border-radius:10px; background:var(--bg); cursor:pointer; text-align:center; font-size:11.5px; font-weight:500; transition:all .15s; }
+    .inc-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+    .inc-opt { padding:12px 6px; border:2px solid var(--hairline); border-radius:var(--radius-lg); background:var(--surface-1); cursor:pointer; text-align:center; font-size:12px; font-weight:500; transition:all .15s; }
     .inc-opt:hover { border-color:var(--red); }
-    .inc-opt.on { border-color:var(--red); background:var(--red-bg); color:var(--red); font-weight:700; }
-    .inc-icon { font-size:22px; display:block; margin-bottom:4px; }
+    .inc-opt.on { border-color:var(--red); background:var(--red-bg); color:var(--red); font-weight:600; }
+    .inc-icon { width:28px; height:28px; display:block; margin:0 auto 6px; stroke-width:1.5; }
 
     /* ── Toast ── */
-    #toast-w { position:fixed; top:64px; right:14px; z-index:9999; display:flex; flex-direction:column; gap:7px; }
-    .toast { background:var(--green); color:#fff; padding:10px 14px; border-radius:10px; font-size:13px; box-shadow:var(--shadow); animation:tIn .25s ease; max-width:280px; }
+    #toast-w { position:fixed; top:64px; right:16px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
+    .toast { background:var(--primary); color:var(--on-primary); padding:10px 16px; border-radius:var(--radius-pill); font-size:13px; font-weight:500; box-shadow:var(--shadow-md); animation:tIn .25s ease; max-width:300px; letter-spacing:-.13px; }
     .toast.err { background:var(--red); }
     @keyframes tIn { from { transform:translateX(110%); opacity:0; } to { transform:translateX(0); opacity:1; } }
 
@@ -224,8 +287,8 @@
     /* ── Misc ── */
     .mt8 { margin-top:8px; }
     .mt12 { margin-top:12px; }
-    .muted { color:var(--muted); font-size:12px; }
-    .divider { height:1px; background:var(--border); margin:8px 0; }
+    .muted { color:var(--ink-muted); font-size:12px; font-weight:400; }
+    .divider { height:1px; background:var(--hairline); margin:12px 0; }
     .frow { display:flex; gap:8px; }
 
     /* ── Print ── */
@@ -238,17 +301,25 @@
     /* ── Scrollbar ── */
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:transparent; }
-    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+    ::-webkit-scrollbar-thumb { background:var(--hairline); border-radius:4px; }
+
+    /* ── Leaflet.draw overrides ── */
+    .leaflet-draw-toolbar a { background:var(--surface-1) !important; color:var(--ink) !important; border:1px solid var(--hairline) !important; border-radius:var(--radius-sm) !important; }
+    .leaflet-draw-toolbar a:hover { background:var(--surface-2) !important; }
+    .leaflet-draw-toolbar .leaflet-draw-draw-polyline { background-position:50% 50% !important; background-size:18px !important; }
   </style>
 </head>
 <body>
 
 <!-- Loading Screen -->
 <div id="loading">
-  <div style="font-size:40px">⛺</div>
+  <div style="font-size:40px"><i data-lucide="tent" class="lucide" style="width:40px;height:40px;stroke-width:1.5"></i></div>
   <div class="spin"></div>
   <p>Memuat Peta Kavling SFC #3…</p>
 </div>
+
+<!-- Offline Banner -->
+<div id="offline-banner">Anda sedang offline — beberapa fitur mungkin tidak tersedia</div>
 
 <!-- Toast -->
 <div id="toast-w"></div>
@@ -257,14 +328,18 @@
 <div id="hdr">
   <div class="hdr-logo">SFC<br>3</div>
   <div class="hdr-info">
-    <div class="hdr-name">Sakinah Family Camp #3</div>
-    <div class="hdr-sub">Bukit Baros · Bogor · 2026</div>
+    <div class="hdr-name" id="hdr-name">Sakinah Family Camp #3</div>
+    <div class="hdr-sub" id="hdr-tagline">Bukit Baros · Sukabumi · Jawa Barat · 2026</div>
   </div>
   <div class="mode-wrap">
-    <button class="mode-btn on" onclick="setMode('public')">👁 Publik</button>
-    <button class="mode-btn"    onclick="setMode('peserta')">🏕 Peserta</button>
-    <button class="mode-btn"    onclick="setMode('admin')">⚙️ Admin</button>
+    <button class="mode-btn on" onclick="setMode('public')"><i data-lucide="eye" class="lucide"></i> Publik</button>
+    <button class="mode-btn" id="mode-btn-peserta" onclick="if(participantData) doPesertaLogout(); else setMode('peserta')"><i data-lucide="tent" class="lucide"></i> Peserta</button>
+    <button class="mode-btn"    onclick="setMode('admin')"><i data-lucide="settings" class="lucide"></i> Admin</button>
   </div>
+  <button class="notif-btn" id="notif-btn" onclick="openNotif()" title="Laporan Masuk">
+    <i data-lucide="bell" class="lucide" style="width:18px;height:18px"></i>
+    <span class="notif-badge" id="notif-badge"></span>
+  </button>
 </div>
 
 <!-- ── MAIN ── -->
@@ -276,7 +351,7 @@
       <div class="sb-title">Statistik Kavling</div>
       <div class="stats-row">
         <div class="stat-box">
-          <div class="stat-val" id="st-total" style="color:var(--green)">—</div>
+          <div class="stat-val" id="st-total" style="color:var(--ink)">—</div>
           <div class="stat-lbl">Total</div>
         </div>
         <div class="stat-box">
@@ -298,32 +373,26 @@
     <div class="sb-section">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div class="sb-title" style="margin:0">Overlay Gambar</div>
-        <button onclick="openOverlayModal()" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--green);background:var(--green);color:#fff;cursor:pointer;font-weight:600">+ Tambah</button>
+        <button onclick="openOverlayModal()" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--primary);background:var(--primary);color:#fff;cursor:pointer;font-weight:600">+ Tambah</button>
       </div>
       <div id="overlay-list"><div class="muted" style="font-size:11px">Belum ada overlay</div></div>
     </div>
 
-    <div class="sb-section">
-      <div class="sb-title">Tools Admin</div>
-      <button class="tool-btn" id="btn-edit-mode" onclick="toggleEditMode()" style="background:var(--bg);border:1.5px solid var(--border);font-weight:600;color:var(--muted)"><span class="ico">✏️</span>Mode Edit: <span id="edit-mode-lbl">OFF</span></button>
-      <button class="tool-btn" id="btn-add" onclick="toggleAddMode()"><span class="ico">⛺</span>Tambah Kavling</button>
-      <button class="tool-btn" onclick="importCSV()"><span class="ico">📥</span>Import CSV Peserta</button>
-      <button class="tool-btn" onclick="document.getElementById('gpx-inp').click()"><span class="ico">🗺</span>Import GPX Track<input type="file" id="gpx-inp" accept=".gpx" style="display:none" onchange="importGPX(this)"></button>
-      <button class="tool-btn" onclick="showAllQR()"><span class="ico">📷</span>Generate Semua QR</button>
-      <button class="tool-btn" onclick="exportPDF()"><span class="ico">📄</span>Unduh Resume PDF</button>
-      <button class="tool-btn" onclick="showSwap()"><span class="ico">🔄</span>Swap Peserta</button>
-      <button class="tool-btn danger" onclick="doResetAll()"><span class="ico">🗑</span>Reset Semua Kavling</button>
+    <div class="sb-section" style="margin-top:auto;border-bottom:none">
+      <button class="tool-btn" onclick="openOv('m-settings')" style="justify-content:center;font-weight:600"><i data-lucide="settings" class="lucide"></i>Pengaturan Admin</button>
     </div>
 
-    <div class="sb-section" style="flex:1;overflow-y:auto">
-      <div class="sb-title">Laporan Masuk</div>
-      <div id="inc-list"><div class="muted">Belum ada laporan</div></div>
-    </div>
   </div>
 
   <!-- Map -->
   <div id="map-wrap">
     <div id="map"></div>
+
+    <div class="map-toolkit" id="map-toolkit">
+      <div class="toolkit-item" onclick="openOverlayModal()" title="Overlay Gambar"><i data-lucide="image" class="lucide"></i></div>
+      <div class="toolkit-item" id="btn-draw-path" onclick="toggleDrawPath()" title="Jalur Setapak"><i data-lucide="footprints" class="lucide"></i></div>
+      <div class="toolkit-item" id="btn-draw-area" onclick="toggleDrawArea()" title="Area Kustom"><i data-lucide="hexagon" class="lucide"></i></div>
+    </div>
 
     <div class="map-legend">
       <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>Tersedia</div>
@@ -331,7 +400,8 @@
       <div class="leg-item"><div class="leg-dot" style="background:var(--blue)"></div>Panitia</div>
     </div>
 
-    <button class="map-fab" onclick="centerMap()" title="Pusatkan ke Area Camp">🎯</button>
+    <button class="map-fab" onclick="centerMap()" title="Pusatkan ke Area Camp"><i data-lucide="crosshair" class="lucide" style="width:20px;height:20px"></i></button>
+    <button class="map-fab" onclick="locateMe()" title="Pusatkan ke lokasi saya" style="bottom:124px"><i data-lucide="map-pin" class="lucide" style="width:18px;height:18px"></i></button>
   </div>
 
   <!-- Right Detail Panel -->
@@ -359,29 +429,29 @@
     <div class="dp-sec">
       <div class="dp-lbl">QR Code Kavling</div>
       <div id="qr-box"></div>
-      <button class="btn btn-gh btn-w mt8" onclick="printQRPanel()">🖨 Cetak QR</button>
+      <button class="btn btn-gh btn-w mt8" onclick="printQRPanel()"><i data-lucide="printer" class="lucide"></i> Cetak QR</button>
     </div>
 
     <div class="dp-sec" id="dp-admin-ctrl" style="display:none">
       <div class="dp-lbl">Kelola Kavling</div>
       <div class="btn-row mt8">
-        <button class="btn btn-gh" onclick="openEditModal()">✏️ Edit</button>
-        <button class="btn btn-r"  onclick="doResetTent()">🗑 Reset</button>
+        <button class="btn btn-gh" onclick="openEditModal()"><i data-lucide="pencil" class="lucide"></i> Edit</button>
+        <button class="btn btn-r"  onclick="doResetTent()"><i data-lucide="trash-2" class="lucide"></i> Reset</button>
       </div>
       <div class="btn-row mt8">
-        <button class="btn btn-gh" onclick="showSwapFromDetail()">🔄 Swap</button>
-        <button class="btn btn-o"  onclick="openAssignModal()">👤 Assign</button>
+        <button class="btn btn-gh" onclick="showSwapFromDetail()"><i data-lucide="refresh-cw" class="lucide"></i> Swap</button>
+        <button class="btn btn-o"  onclick="openAssignModal()"><i data-lucide="user-plus" class="lucide"></i> Assign</button>
       </div>
       <div class="dp-lbl mt8">Rotasi Tenda</div>
       <div class="btn-row mt4" style="align-items:center;gap:6px">
-        <button class="btn btn-gh" onclick="rotateTent(-15)" style="flex:1">↺ -15°</button>
-        <span id="dp-rot-val" style="font-size:12px;font-weight:700;min-width:38px;text-align:center;color:var(--green)">0°</span>
-        <button class="btn btn-gh" onclick="rotateTent(+15)" style="flex:1">↻ +15°</button>
+        <button class="btn btn-gh" onclick="rotateTent(-15)" style="flex:1"><i data-lucide="rotate-ccw" class="lucide"></i> -15°</button>
+        <span id="dp-rot-val" style="font-size:12px;font-weight:600;min-width:38px;text-align:center;color:var(--ink)">0°</span>
+        <button class="btn btn-gh" onclick="rotateTent(+15)" style="flex:1"><i data-lucide="rotate-cw" class="lucide"></i> +15°</button>
       </div>
       <div class="btn-row mt4">
-        <button class="btn btn-gh" style="flex:1;font-size:11px" onclick="rotateTent(-5)">↺ -5°</button>
-        <button class="btn btn-gh" style="flex:1;font-size:11px" onclick="rotateTent(0,'reset')">⊙ Reset</button>
-        <button class="btn btn-gh" style="flex:1;font-size:11px" onclick="rotateTent(+5)">↻ +5°</button>
+        <button class="btn btn-gh" style="flex:1;font-size:11px" onclick="rotateTent(-5)"><i data-lucide="rotate-ccw" class="lucide"></i> -5°</button>
+        <button class="btn btn-gh" style="flex:1;font-size:11px" onclick="rotateTent(0,'reset')"><i data-lucide="rotate-cw" class="lucide" style="transform:scaleX(-1)"></i> Reset</button>
+        <button class="btn btn-gh" style="flex:1;font-size:11px" onclick="rotateTent(+5)"><i data-lucide="rotate-cw" class="lucide"></i> +5°</button>
       </div>
     </div>
   </div>
@@ -403,7 +473,7 @@
   <div id="bs-avail">
     <div class="fg"><label>Nama Keluarga</label><input class="fi" id="bs-fam" placeholder="Keluarga Ahmad Wijaya"></div>
     <div class="fg"><label>Jumlah Anggota</label><input class="fi" id="bs-mbr" type="number" min="1" max="10" placeholder="4"></div>
-    <button class="btn btn-p btn-w btn-lg" onclick="claimTent()">✅ Pilih Tenda Ini</button>
+    <button class="btn btn-p btn-w btn-lg" onclick="claimTent()"><i data-lucide="check" class="lucide"></i> Pilih Tenda Ini</button>
   </div>
 
   <div id="bs-taken" style="display:none">
@@ -412,10 +482,10 @@
       <div style="font-size:16px;font-weight:700;margin-top:4px" id="bs-occ-name">—</div>
       <div class="muted" id="bs-occ-mem">—</div>
     </div>
-    <button class="help-fab" onclick="openIncidentModal()">🆘 Minta Bantuan / Lapor Kendala</button>
+    <button class="help-fab" onclick="openIncidentModal()"><i data-lucide="phone" class="lucide"></i> Minta Bantuan / Lapor Kendala</button>
   </div>
 
-  <button class="btn btn-gh btn-w mt12" onclick="closeBSheet()">✕ Tutup</button>
+  <button class="btn btn-gh btn-w mt12" onclick="closeBSheet()"><i data-lucide="x" class="lucide"></i> Tutup</button>
 </div>
 
 <!-- ══════════════ MODALS ══════════════ -->
@@ -423,7 +493,7 @@
 <!-- Admin Login -->
 <div class="ov show" id="m-login">
   <div class="modal">
-    <div class="modal-title">🔐 Masuk sebagai Admin</div>
+    <div class="modal-title"><i data-lucide="lock" class="lucide" style="width:20px;height:20px"></i> Masuk sebagai Admin</div>
     <div class="muted" style="margin-bottom:14px">Masukkan PIN panitia (default: <b>1234</b>)</div>
     <div class="fg"><label>PIN Admin</label><input type="password" class="fi" id="pin-inp" placeholder="••••" maxlength="6" onkeydown="if(event.key==='Enter')doLogin()"></div>
     <div class="btn-row mt8">
@@ -437,37 +507,45 @@
 <div class="ov" id="m-incident">
   <div class="modal">
     <button class="modal-close" onclick="closeOv('m-incident')">✕</button>
-    <div class="modal-title">🆘 Lapor Kendala</div>
+    <div class="modal-title"><i data-lucide="phone" class="lucide" style="width:20px;height:20px"></i> Lapor Kendala</div>
     <div class="dp-lbl" style="margin-bottom:8px">Jenis Masalah</div>
     <div class="inc-grid">
-      <div class="inc-opt" onclick="pickInc(this,'tenda_bocor')"><span class="inc-icon">💧</span>Tenda Bocor</div>
-      <div class="inc-opt" onclick="pickInc(this,'seleting_rusak')"><span class="inc-icon">🔧</span>Seleting Rusak</div>
-      <div class="inc-opt" onclick="pickInc(this,'gangguan_hewan')"><span class="inc-icon">🐛</span>Gangguan Hewan</div>
-      <div class="inc-opt" onclick="pickInc(this,'darurat')"><span class="inc-icon">🚨</span>Darurat!</div>
-      <div class="inc-opt" onclick="pickInc(this,'toilet_penuh')"><span class="inc-icon">🚽</span>Toilet Penuh</div>
-      <div class="inc-opt" onclick="pickInc(this,'lainnya')"><span class="inc-icon">📝</span>Lainnya</div>
+      <div class="inc-opt" onclick="pickInc(this,'tenda_bocor')"><i data-lucide="droplets" class="lucide inc-icon"></i>Tenda Bocor</div>
+      <div class="inc-opt" onclick="pickInc(this,'seleting_rusak')"><i data-lucide="wrench" class="lucide inc-icon"></i>Seleting Rusak</div>
+      <div class="inc-opt" onclick="pickInc(this,'gangguan_hewan')"><i data-lucide="bug" class="lucide inc-icon"></i>Gangguan Hewan</div>
+      <div class="inc-opt" onclick="pickInc(this,'darurat')"><i data-lucide="alert-triangle" class="lucide inc-icon"></i>Darurat!</div>
+      <div class="inc-opt" onclick="pickInc(this,'toilet_penuh')"><i data-lucide="toilet" class="lucide inc-icon"></i>Toilet Penuh</div>
+      <div class="inc-opt" onclick="pickInc(this,'lainnya')"><i data-lucide="edit-3" class="lucide inc-icon"></i>Lainnya</div>
     </div>
     <div class="fg"><label>Keterangan</label><textarea class="fi" id="inc-desc" placeholder="Ceritakan masalah yang terjadi…"></textarea></div>
-    <button class="btn btn-r btn-w btn-lg" onclick="submitIncident()">🆘 Kirim Laporan</button>
+    <div class="fg"><label>Prioritas</label>
+      <select class="fi" id="inc-priority">
+        <option value="low">Rendah</option>
+        <option value="medium" selected>Sedang</option>
+        <option value="high">Tinggi</option>
+      </select>
+    </div>
+    <button class="btn btn-r btn-w btn-lg" onclick="submitIncident()"><i data-lucide="send" class="lucide"></i> Kirim Laporan</button>
   </div>
 </div>
 
 <!-- QR Modal -->
 <div class="ov" id="m-qr">
-  <div class="modal" style="text-align:center">
-    <button class="modal-close" onclick="closeOv('m-qr')">✕</button>
-    <div class="modal-title" id="qr-m-title">QR Code Kavling</div>
-    <div id="qr-m-code" style="display:flex;justify-content:center;margin:12px 0"></div>
+  <div class="modal" style="text-align:center;max-width:500px">
+    <button class="modal-close" onclick="closeOv('m-qr')"><i data-lucide="x" class="lucide"></i></button>
+    <div class="modal-title" id="qr-m-title"><i data-lucide="qr-code" class="lucide" style="width:20px;height:20px"></i> QR Code Kavling</div>
+    <div id="qr-m-code" style="display:flex;justify-content:center;margin:12px 0;overflow-y:auto;max-height:400px"></div>
     <div class="muted" id="qr-m-url" style="word-break:break-all;margin-bottom:12px"></div>
-    <button class="btn btn-p btn-w" onclick="window.print()">🖨 Cetak</button>
+    <button class="btn btn-p btn-w" onclick="window.print()"><i data-lucide="printer" class="lucide"></i> Cetak</button>
   </div>
+</div>
 </div>
 
 <!-- Edit Tent -->
 <div class="ov" id="m-edit">
   <div class="modal">
     <button class="modal-close" onclick="closeOv('m-edit')">✕</button>
-    <div class="modal-title">✏️ Edit Kavling</div>
+    <div class="modal-title"><i data-lucide="pencil" class="lucide" style="width:20px;height:20px"></i> Edit Kavling</div>
     <input type="hidden" id="edit-orig-id">
     <div class="fg"><label>Nomor Kavling</label><input class="fi" id="edit-num" placeholder="T-01"></div>
     <div class="fi-row">
@@ -484,7 +562,7 @@
     <div class="fg"><label>Fasilitas</label><input class="fi" id="edit-fac" placeholder="Matras, Penerangan"></div>
     <div class="btn-row mt8">
       <button class="btn btn-gh" onclick="closeOv('m-edit')">Batal</button>
-      <button class="btn btn-p" onclick="saveTentEdit()">💾 Simpan</button>
+      <button class="btn btn-p" onclick="saveTentEdit()"><i data-lucide="save" class="lucide"></i> Simpan</button>
     </div>
   </div>
 </div>
@@ -493,13 +571,13 @@
 <div class="ov" id="m-assign">
   <div class="modal">
     <button class="modal-close" onclick="closeOv('m-assign')">✕</button>
-    <div class="modal-title">👤 Assign Peserta</div>
+    <div class="modal-title"><i data-lucide="user-plus" class="lucide" style="width:20px;height:20px"></i> Assign Peserta</div>
     <input type="hidden" id="assign-id">
     <div class="fg"><label>Nama Keluarga</label><input class="fi" id="assign-fam" placeholder="Keluarga Budi Santoso"></div>
     <div class="fg"><label>Jumlah Anggota</label><input class="fi" id="assign-mbr" type="number" min="1" max="12" placeholder="4"></div>
     <div class="btn-row mt8">
       <button class="btn btn-gh" onclick="closeOv('m-assign')">Batal</button>
-      <button class="btn btn-p" onclick="doAssign()">✅ Simpan</button>
+      <button class="btn btn-p" onclick="doAssign()"><i data-lucide="check" class="lucide"></i> Simpan</button>
     </div>
   </div>
 </div>
@@ -508,13 +586,13 @@
 <div class="ov" id="m-swap">
   <div class="modal">
     <button class="modal-close" onclick="closeOv('m-swap')">✕</button>
-    <div class="modal-title">🔄 Swap Penghuni</div>
+    <div class="modal-title"><i data-lucide="refresh-cw" class="lucide" style="width:20px;height:20px"></i> Swap Penghuni</div>
     <div class="muted" style="margin-bottom:14px">Tukar penghuni antara dua kavling</div>
     <div class="fg"><label>Kavling A</label><select class="fi" id="sw-a"></select></div>
     <div class="fg"><label>Kavling B</label><select class="fi" id="sw-b"></select></div>
     <div class="btn-row mt8">
       <button class="btn btn-gh" onclick="closeOv('m-swap')">Batal</button>
-      <button class="btn btn-o" onclick="doSwap()">🔄 Tukar Sekarang</button>
+      <button class="btn btn-o" onclick="doSwap()"><i data-lucide="refresh-cw" class="lucide"></i> Tukar Sekarang</button>
     </div>
   </div>
 </div>
@@ -523,10 +601,10 @@
 <div class="ov" id="m-csv">
   <div class="modal">
     <button class="modal-close" onclick="closeOv('m-csv')">✕</button>
-    <div class="modal-title">📥 Import Data Peserta</div>
+    <div class="modal-title"><i data-lucide="download" class="lucide" style="width:20px;height:20px"></i> Import Data Peserta</div>
     <div class="muted" style="margin-bottom:14px">Upload file CSV/Excel dengan kolom: <b>nama_keluarga, jumlah_anggota, kavling_id</b></div>
-    <div class="fg" style="border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById('csv-inp').click()">
-      <div style="font-size:30px;margin-bottom:6px">📄</div>
+    <div class="fg" style="border:2px dashed var(--hairline);border-radius:10px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById('csv-inp').click()">
+      <div style="margin-bottom:6px"><i data-lucide="file-text" class="lucide" style="width:36px;height:36px;stroke-width:1.5"></i></div>
       <div style="font-size:13px;font-weight:600">Klik atau seret file CSV di sini</div>
       <div class="muted">Format: .csv atau .xlsx</div>
       <input type="file" id="csv-inp" accept=".csv,.xlsx" style="display:none" onchange="handleCSV(this)">
@@ -539,33 +617,97 @@
 <div class="ov" id="m-overlay">
   <div class="modal">
     <button class="modal-close" onclick="closeOv('m-overlay')">✕</button>
-    <div class="modal-title" id="ov-modal-title">🗺 Tambah Overlay Gambar</div>
+    <div class="modal-title" id="ov-modal-title"><i data-lucide="map" class="lucide" style="width:20px;height:20px"></i> Tambah Overlay Gambar</div>
     <input type="hidden" id="ov-edit-id">
 
-    <div class="fg" style="border:2px dashed var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer;margin-bottom:12px" onclick="document.getElementById('ov-img-inp').click()">
-      <div style="font-size:26px;margin-bottom:5px">🖼</div>
+    <div class="fg" style="border:2px dashed var(--hairline);border-radius:10px;padding:18px;text-align:center;cursor:pointer;margin-bottom:12px" onclick="document.getElementById('ov-img-inp').click()">
+      <div style="margin-bottom:8px"><i data-lucide="image" class="lucide" style="width:32px;height:32px;stroke-width:1.5"></i></div>
       <div style="font-size:13px;font-weight:600" id="ov-file-lbl">Klik untuk pilih gambar</div>
       <div class="muted" style="font-size:11px">JPG · PNG · WebP</div>
       <input type="file" id="ov-img-inp" accept="image/*" style="display:none" onchange="handleOverlayFile(this)">
     </div>
 
     <div class="fg" style="margin-bottom:12px">
-      <label style="font-size:11px;color:var(--muted)">Nama / Label</label>
+      <label style="font-size:11px;color:var(--ink-muted)">Nama / Label</label>
       <input class="inp" id="ov-name" placeholder="contoh: Denah Kavling, Foto Satelit..." style="margin-top:4px">
     </div>
 
     <div style="margin-bottom:14px">
-      <label style="font-size:11px;color:var(--muted)">Opacity: <span id="ov-modal-opval">70</span>%</label>
+      <label style="font-size:11px;color:var(--ink-muted)">Opacity: <span id="ov-modal-opval">70</span>%</label>
       <input type="range" id="ov-modal-op" min="10" max="100" value="70" style="width:100%;margin-top:4px" oninput="document.getElementById('ov-modal-opval').textContent=this.value">
     </div>
 
-    <div style="background:var(--bg);border-radius:8px;padding:10px;margin-bottom:14px;font-size:11px;color:var(--muted);line-height:1.6">
-      💡 Setelah diterapkan: <b>seret sudut biru</b> untuk resize bebas, <b>seret tengah</b> untuk pindah posisi. Klik toolbar di atas gambar untuk opsi lain.
+    <div style="background:var(--surface-1);border-radius:8px;padding:10px;margin-bottom:14px;font-size:11px;color:var(--ink-muted);line-height:1.6">
+      <i data-lucide="lightbulb" class="lucide" style="width:14px;height:14px;vertical-align:text-bottom"></i> Setelah diterapkan: <b>seret sudut biru</b> untuk resize bebas, <b>seret tengah</b> untuk pindah posisi. Klik toolbar di atas gambar untuk opsi lain.
     </div>
 
     <div class="btn-row">
-      <button class="btn btn-g" onclick="applyImageOverlay()">✅ Terapkan</button>
-      <button class="btn btn-r" id="ov-del-btn" style="display:none" onclick="deleteOverlay(document.getElementById('ov-edit-id').value)">🗑 Hapus</button>
+      <button class="btn btn-p" onclick="applyImageOverlay()"><i data-lucide="check" class="lucide"></i> Terapkan</button>
+      <button class="btn btn-r" id="ov-del-btn" style="display:none" onclick="deleteOverlay(document.getElementById('ov-edit-id').value)"><i data-lucide="trash-2" class="lucide"></i> Hapus</button>
+    </div>
+  </div>
+</div>
+
+<!-- Participant Login Modal -->
+<div class="ov" id="m-peserta-login">
+  <div class="modal">
+    <button class="modal-close" onclick="closeOv('m-peserta-login')"><i data-lucide="x" class="lucide"></i></button>
+    <div class="modal-title"><i data-lucide="tent" class="lucide" style="width:20px;height:20px"></i> Masuk sebagai Peserta</div>
+    <div class="muted" style="margin-bottom:14px">Masukkan kode unik yang diberikan panitia</div>
+    <div class="fg"><label>Kode Peserta</label>
+      <input class="fi" id="peserta-code" placeholder="Contoh: SFC3-A7X" style="text-transform:uppercase" maxlength="12" onkeydown="if(event.key==='Enter')doPesertaLogin()">
+    </div>
+    <div class="btn-row mt8">
+      <button class="btn btn-gh" onclick="closeOv('m-peserta-login')">Batal</button>
+      <button class="btn btn-p" onclick="doPesertaLogin()"><i data-lucide="log-in" class="lucide"></i> Masuk</button>
+    </div>
+  </div>
+</div>
+
+<!-- Event Modal -->
+<div class="ov" id="m-event">
+  <div class="modal">
+    <button class="modal-close" onclick="closeOv('m-event')"><i data-lucide="x" class="lucide"></i></button>
+    <div class="modal-title"><i data-lucide="map" class="lucide" style="width:20px;height:20px"></i> Pengaturan Event</div>
+    <div class="fg"><label>Nama Acara</label><input class="fi" id="ev-name" placeholder="Sakinah Family Camp #3"></div>
+    <div class="fg"><label>Tagline</label><input class="fi" id="ev-tagline" placeholder="Bukit Baros · Sukabumi · Jawa Barat · 2026"></div>
+    <div class="fi-row">
+      <div class="fg"><label>Latitude</label><input class="fi" id="ev-lat" type="number" step="0.0001" placeholder="-6.9663"></div>
+      <div class="fg"><label>Longitude</label><input class="fi" id="ev-lon" type="number" step="0.0001" placeholder="106.9578"></div>
+    </div>
+    <div class="btn-row mt8">
+      <button class="btn btn-gh" onclick="closeOv('m-event')">Batal</button>
+      <button class="btn btn-p" onclick="saveEvent()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Notification Modal -->
+<div class="ov" id="m-notif">
+  <div class="modal" style="max-width:420px">
+    <button class="modal-close" onclick="closeOv('m-notif')"><i data-lucide="x" class="lucide"></i></button>
+    <div class="modal-title"><i data-lucide="bell" class="lucide" style="width:20px;height:20px"></i> Laporan Masuk</div>
+    <div id="notif-list"></div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="ov" id="m-settings">
+  <div class="modal">
+    <button class="modal-close" onclick="closeOv('m-settings')"><i data-lucide="x" class="lucide"></i></button>
+    <div class="modal-title"><i data-lucide="settings" class="lucide" style="width:20px;height:20px"></i> Pengaturan Admin</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <button class="tool-btn" id="btn-edit-mode" onclick="closeOv('m-settings');toggleEditMode()" style="font-weight:600;color:var(--ink-muted)"><i data-lucide="pencil" class="lucide"></i>Mode Edit: <span id="edit-mode-lbl">OFF</span></button>
+      <button class="tool-btn" id="btn-add" onclick="closeOv('m-settings');toggleAddMode()"><i data-lucide="tent" class="lucide"></i>Tambah Kavling</button>
+      <button class="tool-btn" onclick="closeOv('m-settings');importCSV()"><i data-lucide="download" class="lucide"></i>Import CSV Peserta</button>
+      <button class="tool-btn" onclick="document.getElementById('gpx-inp').click();closeOv('m-settings')"><i data-lucide="map" class="lucide"></i>Import GPX / KML / KMZ<input type="file" id="gpx-inp" accept=".gpx,.kml,.kmz" style="display:none" onchange="importGeoFile(this)"></button>
+      <button class="tool-btn" onclick="closeOv('m-settings');showAllQR()"><i data-lucide="qr-code" class="lucide"></i>Generate Semua QR</button>
+      <button class="tool-btn" onclick="closeOv('m-settings');exportPDF()"><i data-lucide="file-text" class="lucide"></i>Unduh Resume PDF</button>
+      <button class="tool-btn" onclick="closeOv('m-settings');showSwap()"><i data-lucide="refresh-cw" class="lucide"></i>Swap Peserta</button>
+      <button class="tool-btn danger" onclick="closeOv('m-settings');doResetAll()"><i data-lucide="trash-2" class="lucide"></i>Reset Semua Kavling</button>
+    </div>
+    <div style="border-top:1px solid var(--hairline);margin-top:12px;padding-top:12px">
+      <button class="tool-btn" onclick="closeOv('m-settings');openEventModal()"><i data-lucide="map" class="lucide"></i>Pengaturan Event</button>
     </div>
   </div>
 </div>
@@ -597,14 +739,69 @@ async function dbLoadIncidents() {
   if (error) { console.error('dbLoadIncidents:', error); return []; }
   return (data || []).map(i => ({ ...i, tentId: i.tent_id, desc: i.description }));
 }
-async function dbInsertIncident(tentId, type, desc) {
-  const { data, error } = await sb.from('incidents').insert({ tent_id: tentId, type, description: desc }).select().single();
+async function dbInsertIncident(tentId, type, desc, priority='medium') {
+  const { data, error } = await sb.from('incidents').insert({ tent_id: tentId, type, description: desc, priority_level: priority }).select().single();
   if (error) { console.error('dbInsertIncident:', error); return null; }
   return { ...data, tentId: data.tent_id, desc: data.description };
 }
 async function dbResolveIncident(id) {
   const { error } = await sb.from('incidents').update({ status: 'resolved' }).eq('id', id);
   if (error) console.error('dbResolveIncident:', error);
+}
+async function dbLoadEvents() {
+  const { data, error } = await sb.from('events').select('*').order('created_at', { ascending: false });
+  if (error) { console.error('dbLoadEvents:', error); return []; }
+  return data || [];
+}
+async function dbUpsertEvent(ev) {
+  const { error } = await sb.from('events').upsert({ ...ev, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+  if (error) console.error('dbUpsertEvent:', error);
+}
+async function dbFindParticipant(code) {
+  const { data, error } = await sb.from('participants').select('*').eq('code', code).maybeSingle();
+  return error ? null : data;
+}
+async function dbUpdateParticipant(id, updates) {
+  const { error } = await sb.from('participants').update(updates).eq('id', id);
+  if (error) console.error('dbUpdateParticipant:', error);
+}
+
+// ── Map Layers (area & path) ──
+async function dbLoadMapLayers() {
+  const { data, error } = await sb.from('map_layers').select('*');
+  if (error) { console.error('dbLoadMapLayers:', error); return []; }
+  return data || [];
+}
+async function dbUpsertMapLayer(l) {
+  const { error } = await sb.from('map_layers').upsert({
+    id: l.id, type: l.type, name: l.name, color: l.color, coords: l.coords,
+    visible: l.visible, locked: l.locked, updated_at: new Date().toISOString()
+  }, { onConflict: 'id' });
+  if (error) console.error('dbUpsertMapLayer:', error);
+}
+async function dbDeleteMapLayer(id) {
+  const { error } = await sb.from('map_layers').delete().eq('id', id);
+  if (error) console.error('dbDeleteMapLayer:', error);
+}
+
+// ── Map Overlays (gambar) ──
+async function dbLoadOverlays() {
+  const { data, error } = await sb.from('map_overlays').select('*');
+  if (error) { console.error('dbLoadOverlays:', error); return []; }
+  return data || [];
+}
+async function dbUpsertOverlay(ov) {
+  const { error } = await sb.from('map_overlays').upsert({
+    id: ov.id, name: ov.name, url: ov.url, storage_path: ov.storagePath,
+    opacity: ov.opacity, lock_aspect: ov.lockAspect, locked: ov.locked, rotation: ov.rotation || 0,
+    lat_n: ov.latN, lat_s: ov.latS, lon_w: ov.lonW, lon_e: ov.lonE,
+    nat_w: ov.natW, nat_h: ov.natH, visible: ov.visible, updated_at: new Date().toISOString()
+  }, { onConflict: 'id' });
+  if (error) console.error('dbUpsertOverlay:', error);
+}
+async function dbDeleteOverlay(id) {
+  const { error } = await sb.from('map_overlays').delete().eq('id', id);
+  if (error) console.error('dbDeleteOverlay:', error);
 }
 
 // ── Realtime ──
@@ -629,12 +826,39 @@ function initRealtime() {
       if (mode === 'admin') toast('🆘 Laporan baru: kavling ' + row.tent_id);
     })
     .subscribe();
+
+  sb.channel('map-layers-rt')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'map_layers' }, ({ eventType, new: row, old: oldRow }) => {
+      if (eventType === 'DELETE') { removeMapLayerLocal(oldRow.id); return; }
+      const idx = mapLayers.findIndex(l => l.id === row.id);
+      if (idx >= 0) {
+        if (mapLayers[idx].layer) map.removeLayer(mapLayers[idx].layer);
+        mapLayers[idx] = { ...row, layer: null };
+        renderMapLayerShape(mapLayers[idx]);
+      } else {
+        const l = { ...row, layer: null };
+        mapLayers.push(l);
+        renderMapLayerShape(l);
+      }
+      renderLayerList();
+    })
+    .subscribe();
+
+  sb.channel('map-overlays-rt')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'map_overlays' }, ({ eventType, new: row, old: oldRow }) => {
+      if (eventType === 'DELETE') { removeOverlayLocal(oldRow.id); return; }
+      const idx = overlays.findIndex(o => o.id === row.id);
+      if (idx >= 0) return; // hindari echo dari perubahan sendiri (sudah ter-update di client)
+      addOverlayFromRow(row);
+    })
+    .subscribe();
 }
 
 // ══════════════════════════════════════════════
 //   STATE & CONSTANTS
 // ══════════════════════════════════════════════
 const ADMIN_PIN   = '1234';
+const EDIT_ZOOM_THRESHOLD = 17;
 const CAMP_CENTER = [-6.9663, 106.9578];
 const CAMP_ZOOM   = 18;
 const LAT_PER_M   = 0.000009;
@@ -645,9 +869,8 @@ let selTentId   = null;
 let addMode     = false;
 let editMode    = false;  // global edit mode — tampilkan/sembunyikan semua handles
 let incType     = null;
-let map, tentMarkers = {}, areaLayers = {};
-let layerVis    = {};
-let layerLocked = {};
+let map, tentMarkers = {};
+let mapLayers = [];  // {id,type:'area'|'path',name,color,coords,visible,locked,layer}
 let tents     = [];
 let incidents = [];
 
@@ -676,7 +899,7 @@ function initTents() {
 }
 
 function mkTent(id, lat, lon, cap, sz, type, status='available', family=null, members=null, rotation=0) {
-  return { id, lat, lon, capacity:cap, size:sz, type, facilities:'Matras, Penerangan', status, family, members, rotation };
+  return { id, lat, lon, capacity:cap, size:sz, type, facilities:'Matras, Penerangan', status, family, members, rotation, is_collision_checked: false };
 }
 
 // Parse size string "3×3m" → {w, h} in meters
@@ -702,43 +925,43 @@ function tentCorners(lat, lon, sz, rotDeg) {
 }
 function pad(n) { return String(n).padStart(2,'0'); }
 
-// ══════════════════════════════════════════════
-//   AREAS (from GPX)
-// ══════════════════════════════════════════════
-const AREAS = [
-  {
-    id:'camp_utama', name:'Area Camp Utama', color:'#2d5631', fillOp:.10,
-    coords:[[-6.96624,106.95769],[-6.96651,106.95804],[-6.96656,106.95795],[-6.96654,106.95769],[-6.96649,106.95762],[-6.96615,106.95757],[-6.96611,106.95760],[-6.96616,106.95767],[-6.96624,106.95769]]
-  },
-  {
-    id:'camp_panitia', name:'Area Camp Panitia', color:'#1a7ba8', fillOp:.10,
-    coords:[[-6.96618,106.95753],[-6.96641,106.95755],[-6.96640,106.95748],[-6.96621,106.95744],[-6.96616,106.95750],[-6.96618,106.95753]]
-  },
-  {
-    id:'kajian', name:'Area Kajian Outdoor', color:'#4a7c4e', fillOp:.08,
-    coords:[[-6.96624,106.95769],[-6.96651,106.95804],[-6.96670,106.95790],[-6.96660,106.95760],[-6.96645,106.95755],[-6.96624,106.95769]]
-  },
-  {
-    id:'parkiran', name:'Area Parkiran', color:'#7a7470', fillOp:.10,
-    coords:[[-6.96590,106.95766],[-6.96595,106.95760],[-6.96577,106.95739],[-6.96570,106.95748],[-6.96570,106.95762],[-6.96590,106.95766]]
-  },
-  {
-    id:'toilet', name:'Area Toilet (10 Pintu)', color:'#c87137', fillOp:.18,
-    coords:[[-6.96609,106.95741],[-6.96609,106.95735],[-6.96594,106.95735],[-6.96594,106.95741],[-6.96609,106.95741]]
-  },
-  {
-    id:'dapur', name:'Dapur Umum', color:'#e67e22', fillOp:.18,
-    coords:[[-6.96605,106.95769],[-6.96613,106.95774],[-6.96615,106.95769],[-6.96607,106.95764],[-6.96605,106.95769]]
-  },
-  {
-    id:'lapang', name:'Area Lapang Bawah', color:'#27ae60', fillOp:.07,
-    coords:[[-6.96700,106.95790],[-6.96720,106.95820],[-6.96750,106.95810],[-6.96740,106.95775],[-6.96700,106.95790]]
-  },
-  {
-    id:'kolam', name:'Kolam Renang & Gazebo', color:'#2980b9', fillOp:.18,
-    coords:[[-6.96560,106.95800],[-6.96560,106.95830],[-6.96580,106.95830],[-6.96580,106.95800],[-6.96560,106.95800]]
+// ── Collision Detection (SAT) ──
+function polygonProjection(pts, axis) {
+  const dots = pts.map(p => p[0]*axis.x + p[1]*axis.y);
+  return { min: Math.min(...dots), max: Math.max(...dots) };
+}
+function polygonsOverlap(ptsA, ptsB) {
+  const axes = [];
+  for (const pts of [ptsA, ptsB]) {
+    for (let i = 0; i < pts.length; i++) {
+      const j = (i + 1) % pts.length;
+      axes.push({ x: pts[j][1] - pts[i][1], y: pts[j][0] - pts[i][0] });
+    }
   }
-];
+  for (const axis of axes) {
+    const a = polygonProjection(ptsA, axis);
+    const b = polygonProjection(ptsB, axis);
+    if (a.max < b.min || b.max < a.min) return false;
+  }
+  return true;
+}
+function checkCollision(tentId) {
+  const t = tents.find(x => x.id === tentId);
+  if (!t) return false;
+  const myCorners = tentCorners(t.lat, t.lon, t.size, t.rotation || 0);
+  for (const other of tents) {
+    if (other.id === tentId || other.type !== 'peserta') continue;
+    const theirCorners = tentCorners(other.lat, other.lon, other.size, other.rotation || 0);
+    if (polygonsOverlap(myCorners, theirCorners)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// ══════════════════════════════════════════════
+//   AREAS & PATHS — sekarang dari tabel map_layers (lihat MAP LAYERS section)
+// ══════════════════════════════════════════════
 
 const POIS = [
   { name:'🔥 Api Unggun', lat:CAMP_CENTER[0]+.000005, lon:CAMP_CENTER[1], desc:'Pusat area camp' },
@@ -762,13 +985,8 @@ async function initMap() {
 
   L.control.zoom({ position:'topright' }).addTo(map);
 
-  AREAS.forEach(a => {
-    const ly = L.polygon(a.coords, { color:a.color, weight:2, fillColor:a.color, fillOpacity:a.fillOp, dashArray:'4,4' });
-    ly.bindTooltip(a.name, { sticky:true });
-    ly.addTo(map);
-    areaLayers[a.id] = ly;
-    layerVis[a.id]    = true;
-    layerLocked[a.id] = false;
+  map.on('zoomend', () => {
+    if (mode === 'admin') checkZoomForEditMode();
   });
 
   POIS.forEach(p => {
@@ -791,18 +1009,23 @@ async function initMap() {
   }
 
   incidents = await dbLoadIncidents();
+  updateNotifBadge();
+  await loadCurrentEvent();
 
   initRealtime();
   renderAllTents();
   map.on('click', onMapClick);
-  buildLayerList();
-  restoreOverlay();
+  await loadMapLayers();
+  await loadOverlays();
 
   document.getElementById('loading').style.display = 'none';
   document.getElementById('m-login').classList.remove('show');
 
   const tentParam = new URLSearchParams(location.search).get('tent');
   if (tentParam) setTimeout(() => openTentById(tentParam), 500);
+
+  const modeParam = new URLSearchParams(location.search).get('mode');
+  if (modeParam) setTimeout(() => setMode(modeParam), 600);
 }
 
 // ══════════════════════════════════════════════
@@ -816,9 +1039,9 @@ function renderAllTents() {
 }
 
 function tentColor(t) {
-  if (t.type === 'panitia') return { fill:'#1a7ba8', stroke:'#145f84' };
-  if (t.status === 'occupied')  return { fill:'#c87137', stroke:'#9e5929' };
-  return { fill:'#2d5631', stroke:'#1e3b21' };
+  if (t.type === 'panitia') return { fill:'#3b82f6', stroke:'#2563eb' };
+  if (t.status === 'occupied')  return { fill:'#f59e0b', stroke:'#d97706' };
+  return { fill:'#22c55e', stroke:'#16a34a' };
 }
 
 function drawTent(t) {
@@ -849,7 +1072,9 @@ function drawTent(t) {
       html: `<div style="width:18px;height:18px;background:rgba(255,255,255,0.92);border:2px solid #444;border-radius:4px;cursor:move;display:flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 1px 4px #0005;user-select:none">✛</div>`,
       className: '', iconSize:[18,18], iconAnchor:[9,9]
     });
+    let dragOrigLat = t.lat, dragOrigLon = t.lon;
     dragMarker = L.marker([t.lat, t.lon], { icon: handleIcon, draggable: true, zIndexOffset: 300 });
+    dragMarker.on('dragstart', () => { dragOrigLat = t.lat; dragOrigLon = t.lon; });
     dragMarker.on('drag', e => {
       const ll = e.target.getLatLng();
       poly.setLatLngs(tentCorners(ll.lat, ll.lng, t.size, t.rotation || 0));
@@ -858,6 +1083,12 @@ function drawTent(t) {
     dragMarker.on('dragend', e => {
       const ll = e.target.getLatLng();
       t.lat = ll.lat; t.lon = ll.lng;
+      if (checkCollision(t.id)) {
+        t.lat = dragOrigLat; t.lon = dragOrigLon;
+        renderAllTents();
+        toast('⚠️ Tabrakan! Kavling dikembalikan ke posisi semula.', true);
+        return;
+      }
       dbUpsertTent(t);
     });
     if (editMode) dragMarker.addTo(map); // hanya tambah ke map jika editMode ON
@@ -910,8 +1141,8 @@ function showDetailPanel(t) {
   document.getElementById('dp-cap').textContent = t.capacity + 'P';
   document.getElementById('dp-sz').textContent  = t.size;
   document.getElementById('dp-fac').textContent = t.facilities;
-  document.getElementById('dp-fam').textContent = t.family || '—';
-  document.getElementById('dp-mem').textContent = t.members ? t.members + ' anggota' : '—';
+  document.getElementById('dp-fam').textContent = (mode === 'public' && t.status === 'occupied') ? 'Terisi' : (t.family || '—');
+  document.getElementById('dp-mem').textContent = (mode === 'public' && t.status === 'occupied') ? '' : (t.members ? t.members + ' anggota' : '—');
 
   const b = document.getElementById('dp-badge');
   if (t.type === 'panitia')       b.innerHTML = '<span class="badge badge-b">● Panitia</span>';
@@ -940,11 +1171,13 @@ function showBSheet(t) {
   document.getElementById('bs-avail').style.display  = avail ? 'block' : 'none';
   document.getElementById('bs-taken').style.display  = avail ? 'none' : 'block';
   if (!avail) {
-    document.getElementById('bs-occ-name').textContent = t.family || 'Panitia SFC3';
-    document.getElementById('bs-occ-mem').textContent  = t.members ? t.members + ' anggota' : '';
+    document.getElementById('bs-occ-name').textContent = (mode === 'public') ? 'Terisi' : (t.family || 'Panitia SFC3');
+    document.getElementById('bs-occ-mem').textContent  = (mode === 'public') ? '' : (t.members ? t.members + ' anggota' : '');
   } else {
-    document.getElementById('bs-fam').value = '';
-    document.getElementById('bs-mbr').value = '';
+    document.getElementById('bs-fam').value = participantData ? participantData.family_name : '';
+    document.getElementById('bs-mbr').value = participantData ? participantData.members : '';
+    if (participantData) { document.getElementById('bs-fam').setAttribute('readonly', ''); }
+    else { document.getElementById('bs-fam').removeAttribute('readonly'); }
   }
   document.getElementById('bsheet').classList.add('show');
 }
@@ -955,16 +1188,17 @@ function closeBSheet() { document.getElementById('bsheet').classList.remove('sho
 //   CLAIM TENT (Peserta)
 // ══════════════════════════════════════════════
 async function claimTent() {
-  const fam = document.getElementById('bs-fam').value.trim();
-  const mbr = parseInt(document.getElementById('bs-mbr').value) || 1;
+  const fam = participantData ? participantData.family_name : document.getElementById('bs-fam').value.trim();
+  const mbr = participantData ? participantData.members : (parseInt(document.getElementById('bs-mbr').value) || 1);
   if (!fam) { toast('Masukkan nama keluarga terlebih dahulu', true); return; }
   const t = tents.find(x => x.id === selTentId);
   if (!t || t.status !== 'available') { toast('Kavling sudah diambil orang lain!', true); return; }
   t.status = 'occupied'; t.family = fam; t.members = mbr;
+  if (participantData) await dbUpdateParticipant(participantData.id, { claimed_tent_id: t.id });
   closeBSheet();
   renderAllTents();
   await dbUpsertTent(t);
-  toast(`✅ Kavling ${t.id} berhasil dipilih oleh ${fam}!`);
+  toast(`Kavling ${t.id} berhasil dipilih oleh ${fam}!`);
 }
 
 // ══════════════════════════════════════════════
@@ -994,12 +1228,19 @@ async function rotateTent(delta, cmd) {
   if (!selTentId) return;
   const t = tents.find(x => x.id === selTentId);
   if (!t) return;
+  const oldRot = t.rotation || 0;
   if (cmd === 'reset') t.rotation = 0;
   else t.rotation = ((t.rotation || 0) + delta + 360) % 360;
-  // Redraw hanya tenda ini
   const g = tentMarkers[t.id];
   if (g) g.remove();
   drawTent(t);
+  if (checkCollision(t.id)) {
+    t.rotation = oldRot;
+    if (g) g.remove();
+    drawTent(t);
+    toast('⚠️ Rotasi menyebabkan tabrakan!', true);
+    return;
+  }
   const rotEl = document.getElementById('dp-rot-val');
   if (rotEl) rotEl.textContent = t.rotation + '°';
   await dbUpsertTent(t);
@@ -1026,7 +1267,12 @@ async function saveTentEdit() {
   t.size      = document.getElementById('edit-sz').value || '3×3m';
   t.type      = document.getElementById('edit-type').value;
   t.facilities= document.getElementById('edit-fac').value;
-  renderAllTents(); closeOv('m-edit'); showDetailPanel(t);
+  renderAllTents(); showDetailPanel(t);
+  if (checkCollision(t.id)) {
+    toast('⚠️ Ukuran/tipe menyebabkan tabrakan dengan kavling lain!', true);
+    return;
+  }
+  closeOv('m-edit');
   await dbUpsertTent(t);
   toast('Kavling diperbarui');
 }
@@ -1074,21 +1320,56 @@ async function doSwap() {
   toast(`🔄 Swap ${aId} ↔ ${bId} berhasil`);
 }
 
-// ── Add tent mode ──
+// ── Edit mode toggle ──
+function toggleEditMode() {
+  editMode = !editMode;
+  const btn = document.getElementById('btn-edit-mode');
+  const lbl = document.getElementById('edit-mode-lbl');
+  lbl.textContent = editMode ? 'ON' : 'OFF';
+  btn.classList.toggle('on', editMode);
+  btn.style.color = editMode ? 'var(--on-primary)' : 'var(--ink-muted)';
+  renderAllTents();
+  Object.values(overlays).forEach(ov => {
+    if (ov.handles && editMode) ov.handles.forEach(h => h.addTo(map));
+    else if (ov.handles) ov.handles.forEach(h => h.remove());
+  });
+  toast(editMode ? 'Mode Edit aktif — seret ✛ untuk pindah kavling' : 'Mode Edit dimatikan');
+}
+
+function checkZoomForEditMode() {
+  const zoom = map.getZoom();
+  const shouldBeOn = zoom >= EDIT_ZOOM_THRESHOLD;
+  if (shouldBeOn === editMode) return;
+  editMode = shouldBeOn;
+  const btn = document.getElementById('btn-edit-mode');
+  const lbl = document.getElementById('edit-mode-lbl');
+  if (lbl) lbl.textContent = editMode ? 'ON' : 'OFF';
+  if (btn) {
+    btn.classList.toggle('on', editMode);
+    btn.style.color = editMode ? 'var(--on-primary)' : 'var(--ink-muted)';
+  }
+  renderAllTents();
+  overlays.forEach(ov => {
+    if (ov.handles && editMode && !ov.locked) ov.handles.forEach(h => h.addTo(map));
+    else if (ov.handles) ov.handles.forEach(h => h.remove());
+  });
+}
+
 // ══════════════════════════════════════════════
 //   IMAGE OVERLAYS — multi, drag/resize via corner handles
 // ══════════════════════════════════════════════
-let overlays      = [];   // [{id,name,url,imgLayer,handles,visible,opacity,latN,latS,lonW,lonE,natW,natH}]
+let overlays      = [];   // [{id,name,url,imgLayer,handles,visible,opacity,latN,latS,lonW,lonE,natW,natH,storagePath}]
 let _ovPendingUrl = null;
 let _ovPendingW   = 0;
 let _ovPendingH   = 0;
+let _ovPendingFile = null;
 
 const HANDLE_ICON = () => L.divIcon({
-  html: `<div style="width:14px;height:14px;background:#fff;border:2.5px solid #2d5631;border-radius:50%;cursor:crosshair;box-shadow:0 1px 4px #0005"></div>`,
+  html: `<div style="width:14px;height:14px;background:#fff;border:2.5px solid #111;border-radius:50%;cursor:crosshair;box-shadow:0 1px 4px #0005"></div>`,
   className:'', iconSize:[14,14], iconAnchor:[7,7]
 });
 const MOVE_ICON = () => L.divIcon({
-  html: `<div style="width:18px;height:18px;background:rgba(255,255,255,0.9);border:2px solid #c87137;border-radius:4px;cursor:move;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 1px 4px #0005">✛</div>`,
+  html: `<div style="width:18px;height:18px;background:rgba(255,255,255,0.9);border:2px solid #111;border-radius:4px;cursor:move;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 1px 4px #0005">✛</div>`,
   className:'', iconSize:[18,18], iconAnchor:[9,9]
 });
 
@@ -1165,34 +1446,54 @@ function createOverlayGroup(id, url, opacity, latN, latS, lonW, lonE, initRotati
     imgLayer._reset();
   }
 
-  // Terapkan aspect ratio jika locked
-  function applyAspect(anchorLatS) {
+  // Terapkan aspect ratio jika locked — gunakan lon sebagai acuan lebar
+  function applyAspect(anchorLatS, anchorLonE) {
     const ov = overlays.find(o => o.id === id);
     if (!ov?.lockAspect || !ov.natW || !ov.natH) return;
     const cLat  = (state.latN + state.latS) / 2;
     const LON_M = 111320 * Math.cos(cLat * Math.PI / 180);
+    const LAT_M = 111320;
     const wM    = Math.abs(state.lonE - state.lonW) * LON_M;
     const hM    = wM * (ov.natH / ov.natW);
-    state.latN  = (anchorLatS ?? state.latS) + hM / 111320;
+    state.latN  = (anchorLatS ?? state.latS) + hM / LAT_M;
   }
 
-  hNW.on('drag', e => { state.latN=e.latlng.lat; state.lonW=e.latlng.lng; applyAspect(state.latS); refresh(); });
-  hNE.on('drag', e => { state.latN=e.latlng.lat; state.lonE=e.latlng.lng; applyAspect(state.latS); refresh(); });
+  hNW.on('drag', e => {
+    state.latN = e.latlng.lat; state.lonW = e.latlng.lng;
+    applyAspect(state.latS, state.lonE);
+    refresh();
+  });
+  hNE.on('drag', e => {
+    state.latN = e.latlng.lat; state.lonE = e.latlng.lng;
+    applyAspect(state.latS, state.lonW);
+    refresh();
+  });
   hSW.on('drag', e => {
-    state.latS=e.latlng.lat; state.lonW=e.latlng.lng;
-    const ov=overlays.find(o=>o.id===id);
-    if (ov?.lockAspect&&ov.natW&&ov.natH) { const wM=Math.abs(state.lonE-state.lonW)*111320*Math.cos(state.latN*Math.PI/180); state.latS=state.latN-wM*(ov.natH/ov.natW)/111320; }
+    state.latS = e.latlng.lat; state.lonW = e.latlng.lng;
+    // aspect: fix latN, adjust latS berdasarkan lebar baru
+    const ov = overlays.find(o => o.id === id);
+    if (ov?.lockAspect && ov.natW && ov.natH) {
+      const LON_M = 111320 * Math.cos(state.latN * Math.PI / 180);
+      const wM    = Math.abs(state.lonE - state.lonW) * LON_M;
+      state.latS  = state.latN - wM * (ov.natH / ov.natW) / 111320;
+    }
     refresh();
   });
   hSE.on('drag', e => {
-    state.latS=e.latlng.lat; state.lonE=e.latlng.lng;
-    const ov=overlays.find(o=>o.id===id);
-    if (ov?.lockAspect&&ov.natW&&ov.natH) { const wM=Math.abs(state.lonE-state.lonW)*111320*Math.cos(state.latN*Math.PI/180); state.latS=state.latN-wM*(ov.natH/ov.natW)/111320; }
+    state.latS = e.latlng.lat; state.lonE = e.latlng.lng;
+    const ov = overlays.find(o => o.id === id);
+    if (ov?.lockAspect && ov.natW && ov.natH) {
+      const LON_M = 111320 * Math.cos(state.latN * Math.PI / 180);
+      const wM    = Math.abs(state.lonE - state.lonW) * LON_M;
+      state.latS  = state.latN - wM * (ov.natH / ov.natW) / 111320;
+    }
     refresh();
   });
   hCenter.on('drag', e => {
-    const dLat=e.latlng.lat-(state.latN+state.latS)/2, dLon=e.latlng.lng-(state.lonW+state.lonE)/2;
-    state.latN+=dLat; state.latS+=dLat; state.lonW+=dLon; state.lonE+=dLon; refresh();
+    const dLat = e.latlng.lat - (state.latN+state.latS)/2;
+    const dLon = e.latlng.lng - (state.lonW+state.lonE)/2;
+    state.latN+=dLat; state.latS+=dLat; state.lonW+=dLon; state.lonE+=dLon;
+    refresh();
   });
 
   // Rotasi: hitung sudut center → posisi handle
@@ -1205,12 +1506,33 @@ function createOverlayGroup(id, url, opacity, latN, latS, lonW, lonE, initRotati
   });
 
   [hNW,hNE,hSW,hSE,hCenter,hRotate].forEach(h => h.on('dragend', () => {
-    const ov=overlays.find(o=>o.id===id);
-    if (ov) { Object.assign(ov, state); ov.rotation=rot; saveAllOverlays(); }
+    const ov = overlays.find(o => o.id === id);
+    if (ov) { Object.assign(ov, state); ov.rotation=rot; dbUpsertOverlay(ov); }
   }));
 
   const handles = [hNW,hNE,hSW,hSE,hCenter,hRotate];
   return { imgLayer, handles, state, getRotation:()=>rot, applyRotation };
+}
+
+// ── Supabase Storage for Overlays ──
+// Bucket 'overlays' sudah dibuat & di-set public lewat dashboard/migration —
+// anon key tidak punya izin listBuckets/createBucket (RLS), jadi tidak perlu dicek di client.
+
+async function uploadOverlayToStorage(file, name) {
+  const path = 'overlays/' + Date.now() + '_' + name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const { error } = await sb.storage.from('overlays').upload(path, file, {
+    cacheControl: '31536000', upsert: true
+  });
+  if (error) { console.error('Upload failed:', error); return null; }
+  const { data } = sb.storage.from('overlays').getPublicUrl(path);
+  return { url: data.publicUrl, path };
+}
+
+async function deleteOverlayFromStorage(storagePath) {
+  if (!storagePath) return;
+  try {
+    await sb.storage.from('overlays').remove([storagePath]);
+  } catch(e) { console.error('Delete from storage failed:', e); }
 }
 
 function openOverlayModal(editId) {
@@ -1220,62 +1542,47 @@ function openOverlayModal(editId) {
   document.getElementById('ov-modal-op').value = 70;
   document.getElementById('ov-modal-opval').textContent = 70;
   document.getElementById('ov-file-lbl').textContent = 'Klik untuk pilih gambar';
-  _ovPendingUrl = null; _ovPendingW = 0; _ovPendingH = 0;
+  _ovPendingUrl = null; _ovPendingW = 0; _ovPendingH = 0; _ovPendingFile = null;
 
   if (editId) {
     const ov = overlays.find(o => o.id === editId);
     if (ov) {
-      document.getElementById('ov-modal-title').textContent = '✏️ Edit Overlay';
+      document.getElementById('ov-modal-title').innerHTML = '<i data-lucide="pencil" class="lucide" style="width:20px;height:20px"></i> Edit Overlay';
       document.getElementById('ov-name').value     = ov.name;
       document.getElementById('ov-modal-op').value = ov.opacity;
       document.getElementById('ov-modal-opval').textContent = ov.opacity;
-      document.getElementById('ov-file-lbl').textContent = '✅ ' + ov.name + ' (upload baru untuk ganti)';
+      document.getElementById('ov-file-lbl').textContent = ov.name + ' (upload baru untuk ganti)';
       document.getElementById('ov-del-btn').style.display = '';
+      lucide.createIcons();
     }
   } else {
-    document.getElementById('ov-modal-title').textContent = '🗺 Tambah Overlay Gambar';
+    document.getElementById('ov-modal-title').innerHTML = '<i data-lucide="map" class="lucide" style="width:20px;height:20px"></i> Tambah Overlay Gambar';
     document.getElementById('ov-del-btn').style.display = 'none';
+    lucide.createIcons();
   }
   openOv('m-overlay');
 }
 
-async function handleOverlayFile(input) {
+function handleOverlayFile(input) {
   const file = input.files[0]; if (!file) return;
-  const lbl = document.getElementById('ov-file-lbl');
-  lbl.textContent = '⏳ Mengupload…';
-
-  // Baca dimensi gambar dulu
-  const localUrl = await new Promise(res => {
-    const r = new FileReader();
-    r.onload = e => res(e.target.result);
-    r.readAsDataURL(file);
-  });
-  const { w, h } = await new Promise(res => {
+  _ovPendingFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
     const img = new Image();
-    img.onload = () => res({ w: img.naturalWidth, h: img.naturalHeight });
-    img.src = localUrl;
-  });
-  _ovPendingW = w; _ovPendingH = h;
-  if (!document.getElementById('ov-name').value)
-    document.getElementById('ov-name').value = file.name.replace(/\.[^.]+$/, '');
-
-  // Coba upload ke Supabase Storage
-  try {
-    const fname = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
-    const { data, error } = await sb.storage.from('overlays').upload(fname, file, { upsert: true });
-    if (error) throw error;
-    const { data: pub } = sb.storage.from('overlays').getPublicUrl(fname);
-    _ovPendingUrl = pub.publicUrl;
-    lbl.textContent = `✅ ${file.name} (${w}×${h}) — tersimpan di cloud`;
-  } catch(e) {
-    // Fallback ke base64 lokal jika Storage belum setup
-    _ovPendingUrl = localUrl;
-    lbl.textContent = `✅ ${file.name} (${w}×${h}) — lokal saja`;
-    console.warn('Supabase Storage fallback:', e.message);
-  }
+    img.onload = () => {
+      _ovPendingUrl = e.target.result;
+      _ovPendingW   = img.naturalWidth;
+      _ovPendingH   = img.naturalHeight;
+      document.getElementById('ov-file-lbl').textContent = `${file.name} (${img.naturalWidth}×${img.naturalHeight})`;
+      if (!document.getElementById('ov-name').value)
+        document.getElementById('ov-name').value = file.name.replace(/\.[^.]+$/, '');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
-function applyImageOverlay() {
+async function applyImageOverlay() {
   const editId  = document.getElementById('ov-edit-id').value;
   const name    = document.getElementById('ov-name').value || 'Overlay';
   const opacity = parseInt(document.getElementById('ov-modal-op').value);
@@ -1285,10 +1592,16 @@ function applyImageOverlay() {
     if (!ov) return;
     ov.name = name; ov.opacity = opacity;
     ov.imgLayer.setOpacity(opacity/100);
-    if (_ovPendingUrl) {
-      // Ganti gambar dengan posisi yang sama
-      ov.url  = _ovPendingUrl; ov.natW = _ovPendingW; ov.natH = _ovPendingH;
-      const newLayer = L.imageOverlay(_ovPendingUrl, [[ov.latS,ov.lonW],[ov.latN,ov.lonE]], {opacity:opacity/100,interactive:false});
+    if (_ovPendingFile) {
+      const result = await uploadOverlayToStorage(_ovPendingFile, _ovPendingFile.name);
+      if (result) {
+        if (ov.storagePath) await deleteOverlayFromStorage(ov.storagePath);
+        ov.url = result.url; ov.storagePath = result.path;
+      } else {
+        ov.url = _ovPendingUrl;
+      }
+      ov.natW = _ovPendingW; ov.natH = _ovPendingH;
+      const newLayer = L.imageOverlay(ov.url, [[ov.latS,ov.lonW],[ov.latN,ov.lonE]], {opacity:opacity/100,interactive:false});
       ov.imgLayer.remove(); ov.imgLayer = newLayer;
       if (ov.visible) ov.imgLayer.addTo(map);
     }
@@ -1296,63 +1609,82 @@ function applyImageOverlay() {
     if (!_ovPendingUrl) { toast('Pilih gambar terlebih dahulu', true); return; }
     const id = 'ov_' + Date.now();
     const { latN,latS,lonW,lonE } = boundsForImage(_ovPendingW, _ovPendingH);
-    const { imgLayer, handles, state, getRotation, applyRotation } = createOverlayGroup(id, _ovPendingUrl, opacity, latN, latS, lonW, lonE, 0);
+
+    let url = _ovPendingUrl;
+    let storagePath = null;
+    if (_ovPendingFile) {
+      const result = await uploadOverlayToStorage(_ovPendingFile, _ovPendingFile.name);
+      if (result) { url = result.url; storagePath = result.path; }
+    }
+
+    const { imgLayer, handles, state, getRotation, applyRotation } = createOverlayGroup(id, url, opacity, latN, latS, lonW, lonE, 0);
     imgLayer.addTo(map);
     if (editMode) handles.forEach(h => h.addTo(map));
-    overlays.push({ id, name, url:_ovPendingUrl, imgLayer, handles, visible:true, opacity, natW:_ovPendingW, natH:_ovPendingH, lockAspect:true, locked:false, rotation:0, getRotation, applyRotation, ...state });
+    const newOv = { id, name, url, imgLayer, handles, visible:true, opacity, natW:_ovPendingW, natH:_ovPendingH, lockAspect:true, locked:false, rotation:0, getRotation, applyRotation, storagePath, ...state };
+    overlays.push(newOv);
+    await dbUpsertOverlay(newOv);
   }
 
-  saveAllOverlays(); renderOverlayList(); closeOv('m-overlay');
-  toast(editId ? '✅ Overlay diperbarui' : '✅ Seret ✛ untuk pindah, seret sudut 🟢 untuk resize!');
+  if (editId) { const ov = overlays.find(o => o.id === editId); if (ov) await dbUpsertOverlay(ov); }
+  _ovPendingFile = null;
+  renderOverlayList(); closeOv('m-overlay');
+  toast(editId ? 'Overlay diperbarui' : 'Seret ✛ untuk pindah, seret sudut untuk resize!');
 }
 
 function toggleOverlay(id) {
   const ov = overlays.find(o => o.id === id); if (!ov) return;
   ov.visible = !ov.visible;
-  if (ov.visible) { ov.imgLayer.addTo(map); ov.handles.forEach(h => h.addTo(map)); }
-  else            { ov.imgLayer.remove();   ov.handles.forEach(h => h.remove()); }
-  renderOverlayList(); saveAllOverlays();
+  if (ov.visible) {
+    ov.imgLayer.addTo(map);
+    if (editMode && !ov.locked) ov.handles.forEach(h => h.addTo(map));
+  } else {
+    ov.imgLayer.remove(); ov.handles.forEach(h => h.remove());
+  }
+  renderOverlayList(); dbUpsertOverlay(ov);
 }
 
-function deleteOverlay(id) {
+async function deleteOverlay(id) {
   if (!confirm('Hapus overlay ini?')) return;
   const idx = overlays.findIndex(o => o.id === id); if (idx===-1) return;
   overlays[idx].imgLayer.remove(); overlays[idx].handles.forEach(h => h.remove());
+  if (overlays[idx].storagePath) await deleteOverlayFromStorage(overlays[idx].storagePath);
   overlays.splice(idx,1);
-  saveAllOverlays(); renderOverlayList(); closeOv('m-overlay'); toast('Overlay dihapus');
+  await dbDeleteOverlay(id);
+  renderOverlayList(); closeOv('m-overlay'); toast('Overlay dihapus');
 }
 
 function setOverlayOpacity(id, val) {
   const ov = overlays.find(o => o.id === id);
-  if (ov) { ov.opacity = parseInt(val); ov.imgLayer.setOpacity(val/100); }
-  saveAllOverlays();
+  if (ov) { ov.opacity = parseInt(val); ov.imgLayer.setOpacity(val/100); dbUpsertOverlay(ov); }
 }
 
 function renderOverlayList() {
   const el = document.getElementById('overlay-list'); if (!el) return;
   if (!overlays.length) { el.innerHTML = '<div class="muted" style="font-size:11px">Belum ada overlay</div>'; return; }
   el.innerHTML = overlays.map(ov => `
-    <div style="background:var(--bg);border-radius:8px;padding:7px 9px;margin-bottom:5px;border:1px solid ${ov.locked?'var(--orange)':'transparent'}">
-      <div style="display:flex;align-items:center;gap:4px;margin-bottom:5px">
-        <span style="font-size:11px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🖼 ${ov.name}</span>
-        <button onclick="toggleOverlay('${ov.id}')" style="border:none;background:none;cursor:pointer;font-size:13px;opacity:${ov.visible?1:.35}" title="Tampilkan/Sembunyikan">👁</button>
-        <button onclick="toggleOverlayLock('${ov.id}')" style="border:none;background:none;cursor:pointer;font-size:13px;color:${ov.locked?'var(--orange)':'var(--muted)'}" title="${ov.locked?'Buka kunci':'Kunci posisi'}">🔒</button>
-        <button onclick="openOverlayModal('${ov.id}')" style="border:none;background:none;cursor:pointer;font-size:12px" title="Edit">✏️</button>
-        <button onclick="deleteOverlay('${ov.id}')" style="border:none;background:none;cursor:pointer;font-size:12px" title="Hapus">🗑</button>
+    <div style="background:var(--surface-1);border-radius:8px;padding:7px 9px;margin-bottom:5px;border:1px solid ${ov.locked?'var(--orange)':'transparent'}">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">
+        <i data-lucide="image" class="lucide" style="width:14px;height:14px;flex-shrink:0;color:var(--ink-muted)"></i>
+        <span style="font-size:11px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ov.name}</span>
+        <button onclick="toggleOverlay('${ov.id}')" style="border:none;background:none;cursor:pointer;padding:2px;opacity:${ov.visible?1:.4}" title="Tampilkan/Sembunyikan"><i data-lucide="eye" class="lucide" style="width:14px;height:14px;display:block"></i></button>
+        <button onclick="toggleOverlayLock('${ov.id}')" style="border:none;background:none;cursor:pointer;padding:2px;color:${ov.locked?'var(--orange)':'var(--ink-muted)'}" title="${ov.locked?'Buka kunci':'Kunci posisi'}"><i data-lucide="${ov.locked?'lock':'lock-open'}" class="lucide" style="width:14px;height:14px;display:block"></i></button>
+        <button onclick="openOverlayModal('${ov.id}')" style="border:none;background:none;cursor:pointer;padding:2px" title="Edit"><i data-lucide="pencil" class="lucide" style="width:14px;height:14px;display:block"></i></button>
+        <button onclick="deleteOverlay('${ov.id}')" style="border:none;background:none;cursor:pointer;padding:2px" title="Hapus"><i data-lucide="trash-2" class="lucide" style="width:14px;height:14px;display:block"></i></button>
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-        <span style="font-size:10px;color:var(--muted);width:28px">${ov.opacity}%</span>
+        <span style="font-size:10px;color:var(--ink-muted);width:28px">${ov.opacity}%</span>
         <input type="range" min="10" max="100" value="${ov.opacity}" style="flex:1;height:3px" oninput="setOverlayOpacity('${ov.id}',this.value);this.previousElementSibling.textContent=this.value+'%'">
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-        <span style="font-size:10px;color:var(--muted);width:28px">${Math.round(ov.rotation||0)}°</span>
+        <span style="font-size:10px;color:var(--ink-muted);width:28px">${Math.round(ov.rotation||0)}°</span>
         <input type="range" min="-180" max="180" value="${Math.round(ov.rotation||0)}" style="flex:1;height:3px" oninput="setOverlayRotation('${ov.id}',+this.value);this.previousElementSibling.textContent=this.value+'°'">
       </div>
-      <label style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);cursor:pointer;user-select:none">
+      <label style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--ink-muted);cursor:pointer;user-select:none">
         <input type="checkbox" ${ov.lockAspect?'checked':''} onchange="toggleOverlayAspect('${ov.id}',this.checked)" style="width:12px;height:12px">
         Kunci rasio gambar
       </label>
     </div>`).join('');
+  lucide.createIcons();
 }
 
 function toggleOverlayLock(id) {
@@ -1361,45 +1693,159 @@ function toggleOverlayLock(id) {
   // Jika dikunci, sembunyikan handles meski editMode ON
   if (ov.locked) ov.handles.forEach(h => h.remove());
   else if (editMode && ov.visible) ov.handles.forEach(h => h.addTo(map));
-  saveAllOverlays(); renderOverlayList();
-  toast(ov.locked ? `🔒 Overlay "${ov.name}" dikunci` : `🔓 Overlay "${ov.name}" dibuka`);
+  dbUpsertOverlay(ov); renderOverlayList();
+  toast(ov.locked ? `Overlay "${ov.name}" dikunci` : `Overlay "${ov.name}" dibuka`);
 }
 
 function setOverlayRotation(id, deg) {
   const ov = overlays.find(o => o.id === id); if (!ov) return;
   ov.rotation = ((deg % 360) + 360) % 360;
   ov.applyRotation?.(deg);
-  saveAllOverlays();
+  dbUpsertOverlay(ov);
 }
 
 function toggleOverlayAspect(id, val) {
   const ov = overlays.find(o => o.id === id); if (!ov) return;
   ov.lockAspect = val;
-  saveAllOverlays();
+  dbUpsertOverlay(ov);
 }
 
-function saveAllOverlays() {
-  const data = overlays.map(ov => ({
-    id:ov.id, name:ov.name, url:ov.url, opacity:ov.opacity, visible:ov.visible,
-    natW:ov.natW, natH:ov.natH, latN:ov.latN, latS:ov.latS, lonW:ov.lonW, lonE:ov.lonE,
-    lockAspect:ov.lockAspect, locked:ov.locked, rotation:ov.rotation||0
-  }));
-  try { localStorage.setItem('sfc3-overlays', JSON.stringify(data)); }
-  catch(e) { toast('⚠️ Gambar terlalu besar untuk disimpan lokal', true); }
+function removeOverlayLocal(id) {
+  const idx = overlays.findIndex(o => o.id === id); if (idx === -1) return;
+  overlays[idx].imgLayer.remove(); overlays[idx].handles.forEach(h => h.remove());
+  overlays.splice(idx, 1);
+  renderOverlayList();
 }
 
-function restoreOverlay() {
-  localStorage.removeItem('sfc3-overlay'); // migrasi format lama
-  let data; try { data = JSON.parse(localStorage.getItem('sfc3-overlays')||'[]'); } catch(e) { return; }
-  data.forEach(d => {
-    if (!d.url) return;
-    const { latN=d.latN, latS=d.latS, lonW=d.lonW, lonE=d.lonE } = d;
-    const { imgLayer, handles, state, getRotation, applyRotation } = createOverlayGroup(d.id, d.url, d.opacity||70, latN, latS, lonW, lonE, d.rotation||0);
-    const ov = { id:d.id, name:d.name, url:d.url, imgLayer, handles, visible:d.visible!==false, opacity:d.opacity||70, natW:d.natW, natH:d.natH, lockAspect:d.lockAspect!==false, locked:d.locked||false, rotation:d.rotation||0, getRotation, applyRotation, ...state };
-    if (ov.visible) { imgLayer.addTo(map); if (editMode && !ov.locked) handles.forEach(h => h.addTo(map)); }
-    overlays.push(ov);
+function addOverlayFromRow(d) {
+  if (!d.url) return;
+  const { imgLayer, handles, state, getRotation, applyRotation } = createOverlayGroup(d.id, d.url, d.opacity||70, d.lat_n, d.lat_s, d.lon_w, d.lon_e, d.rotation||0);
+  const ov = { id:d.id, name:d.name, url:d.url, imgLayer, handles, visible:d.visible!==false, opacity:d.opacity||70, natW:d.nat_w, natH:d.nat_h, lockAspect:d.lock_aspect!==false, locked:d.locked||false, rotation:d.rotation||0, getRotation, applyRotation, storagePath:d.storage_path||null, latN:d.lat_n, latS:d.lat_s, lonW:d.lon_w, lonE:d.lon_e };
+  if (ov.visible) { imgLayer.addTo(map); if (editMode && !ov.locked) handles.forEach(h => h.addTo(map)); }
+  overlays.push(ov);
+  renderOverlayList();
+  return ov;
+}
+
+async function loadOverlays() {
+  const rows = await dbLoadOverlays();
+  rows.forEach(d => {
+    addOverlayFromRow(d);
   });
   renderOverlayList();
+}
+
+// ══════════════════════════════════════════════
+//   MAP LAYERS — area (poligon) & path (jalur), disatukan & tersimpan di Supabase
+// ══════════════════════════════════════════════
+const AREA_COLORS = ['#3b82f6','#6366f1','#22c55e','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6'];
+const PATH_COLOR  = '#a3a3a3';
+let drawControl     = null;
+let areaDrawHandler = null;
+let isDrawingArea   = false;
+let isDrawingPath   = false;
+
+function metersBetween(a, b) {
+  const LAT_M = 111320, LON_M = 111320 * Math.cos(a[0] * Math.PI / 180);
+  return Math.hypot((a[0]-b[0])*LAT_M, (a[1]-b[1])*LON_M);
+}
+
+// Buat/refresh Leaflet layer untuk satu entri mapLayers (mutasi l.layer)
+function renderMapLayerShape(l) {
+  if (l.layer) map.removeLayer(l.layer);
+  if (l.type === 'area') {
+    l.layer = L.polygon(l.coords, { color:l.color, weight:2, fillColor:l.color, fillOpacity:.12, dashArray:'4,4' });
+  } else {
+    l.layer = L.polyline(l.coords, { color:l.color || PATH_COLOR, weight:3, dashArray:'8,6', opacity:.8 });
+  }
+  l.layer.bindTooltip(l.name, { sticky:true });
+  if (l.visible) l.layer.addTo(map);
+  return l.layer;
+}
+
+async function loadMapLayers() {
+  const rows = await dbLoadMapLayers();
+  mapLayers = rows.map(r => ({ ...r, layer:null }));
+  mapLayers.forEach(renderMapLayerShape);
+  renderLayerList();
+}
+
+function removeMapLayerLocal(id) {
+  const idx = mapLayers.findIndex(l => l.id === id); if (idx === -1) return;
+  if (mapLayers[idx].layer) map.removeLayer(mapLayers[idx].layer);
+  mapLayers.splice(idx, 1);
+  renderLayerList();
+}
+
+async function commitNewMapLayer(type, coordsLatLng, defaultName) {
+  const color = AREA_COLORS[mapLayers.filter(l=>l.type==='area').length % AREA_COLORS.length];
+  const l = {
+    id: type + '_' + Date.now(), type, name: defaultName,
+    color: type === 'area' ? color : PATH_COLOR,
+    coords: coordsLatLng, visible: true, locked: false, layer: null
+  };
+  renderMapLayerShape(l);
+  mapLayers.push(l);
+  await dbUpsertMapLayer(l);
+  renderLayerList();
+  return l;
+}
+
+function toggleDrawArea() {
+  if (isDrawingArea) { stopDrawingArea(); return; }
+  if (isDrawingPath) stopDrawingPath();
+  isDrawingArea = true;
+  document.getElementById('btn-draw-area')?.classList.add('active');
+  const color = AREA_COLORS[mapLayers.filter(l=>l.type==='area').length % AREA_COLORS.length];
+  map.on(L.Draw.Event.CREATED, onAreaCreated);
+  areaDrawHandler = new L.Draw.Polygon(map, {
+    shapeOptions: { color, weight: 2, fillColor: color, fillOpacity: 0.12, dashArray: '4,4' }
+  });
+  areaDrawHandler.enable();
+  toast('Klik di peta untuk mulai menggambar area.');
+}
+
+function stopDrawingArea() {
+  isDrawingArea = false;
+  document.getElementById('btn-draw-area')?.classList.remove('active');
+  if (areaDrawHandler) { areaDrawHandler.disable(); areaDrawHandler = null; }
+  map.off(L.Draw.Event.CREATED, onAreaCreated);
+}
+
+async function onAreaCreated(e) {
+  stopDrawingArea();
+  const coords = e.layer.getLatLngs()[0].map(ll => [ll.lat, ll.lng]);
+  const name = 'Area ' + (mapLayers.filter(l=>l.type==='area').length + 1);
+  const l = await commitNewMapLayer('area', coords, name);
+  toast('Area "' + name + '" ditambahkan.');
+  const newName = prompt('Nama area:', name);
+  if (newName && newName.trim()) { l.name = newName.trim(); l.layer.setTooltipContent(l.name); await dbUpsertMapLayer(l); renderLayerList(); }
+}
+
+function toggleDrawPath() {
+  if (isDrawingPath) { stopDrawingPath(); return; }
+  if (isDrawingArea) stopDrawingArea();
+  isDrawingPath = true;
+  document.getElementById('btn-draw-path')?.classList.add('active');
+  map.on(L.Draw.Event.CREATED, onPathCreated);
+  drawControl = new L.Draw.Polyline(map, { shapeOptions: { color: PATH_COLOR, weight: 3, dashArray: '8,6' }, metric: false });
+  drawControl.enable();
+  toast('Klik di peta untuk mulai menggambar jalur.');
+}
+
+function stopDrawingPath() {
+  isDrawingPath = false;
+  document.getElementById('btn-draw-path')?.classList.remove('active');
+  if (drawControl) { drawControl.disable(); drawControl = null; }
+  map.off(L.Draw.Event.CREATED, onPathCreated);
+}
+
+async function onPathCreated(e) {
+  stopDrawingPath();
+  const coords = e.layer.getLatLngs().map(ll => [ll.lat, ll.lng]);
+  const name = 'Jalur ' + (mapLayers.filter(l=>l.type==='path').length + 1);
+  await commitNewMapLayer('path', coords, name);
+  toast('Jalur "' + name + '" ditambahkan.');
 }
 
 function toggleAddMode() {
@@ -1409,35 +1855,20 @@ function toggleAddMode() {
   if (addMode) toast('Klik di peta untuk menempatkan kavling baru');
 }
 
-function toggleEditMode() {
-  editMode = !editMode;
-  const lbl = document.getElementById('edit-mode-lbl');
-  const btn = document.getElementById('btn-edit-mode');
-  if (lbl) lbl.textContent = editMode ? 'ON' : 'OFF';
-  if (btn) { btn.style.color = editMode ? 'var(--green)' : 'var(--muted)'; btn.style.borderColor = editMode ? 'var(--green)' : 'var(--border)'; }
-
-  // Tent handles
-  Object.values(tentMarkers).forEach(tm => {
-    if (editMode) tm.showHandle?.();
-    else          tm.hideHandle?.();
-  });
-
-  // Overlay handles — respektifkan status locked
-  overlays.forEach(ov => {
-    if (!ov.visible) return;
-    if (editMode && !ov.locked) ov.handles.forEach(h => h.addTo(map));
-    else ov.handles.forEach(h => h.remove());
-  });
-
-  toast(editMode ? '✏️ Mode Edit: ON — handles aktif' : '🔒 Mode Edit: OFF');
-}
-
 async function onMapClick(e) {
   if (!addMode) return;
   const n  = tents.filter(t=>t.type==='peserta').length + 1;
   const id = `T-${pad(n)}`;
   const nt = mkTent(id, e.latlng.lat, e.latlng.lng, 4, '3×3m', 'peserta');
   tents.push(nt); drawTent(nt); updateStats();
+  if (checkCollision(nt.id)) {
+    tents.pop(); renderAllTents(); updateStats();
+    toast('⚠️ Tidak bisa tempatkan tenda di sini (overlap)!', true);
+    addMode = false;
+    document.getElementById('btn-add').classList.remove('on');
+    map.getContainer().style.cursor = '';
+    return;
+  }
   addMode = false;
   document.getElementById('btn-add').classList.remove('on');
   map.getContainer().style.cursor = '';
@@ -1445,123 +1876,161 @@ async function onMapClick(e) {
   toast(`Kavling ${id} ditambahkan`);
 }
 
-// ══════════════════════════════════════════════
-//   LAYER MANAGEMENT
-// ══════════════════════════════════════════════
-function buildLayerList() {
-  const el = document.getElementById('layer-list');
-  el.innerHTML = AREAS.map(a => `
+function renderLayerList() {
+  const el = document.getElementById('layer-list'); if (!el) return;
+  if (!mapLayers.length) { el.innerHTML = '<div class="muted" style="font-size:11px">Belum ada layer</div>'; return; }
+  el.innerHTML = mapLayers.map(l => `
     <div class="layer-item">
-      <div class="layer-dot" style="background:${a.color}"></div>
-      <div class="layer-lbl">${a.name}</div>
-      <button class="lbtn" id="vis-${a.id}" onclick="toggleVis('${a.id}')" title="Tampilkan/Sembunyikan">👁</button>
-      <button class="lbtn ${layerLocked[a.id]?'locked':''}" id="lock-${a.id}" onclick="toggleLock('${a.id}')" title="Kunci Layer">🔒</button>
+      <div class="layer-dot" style="background:${l.color}"></div>
+      <div class="layer-lbl" title="${l.name}">${l.name}</div>
+      <button class="lbtn" onclick="toggleLayerVis('${l.id}')" title="Tampilkan/Sembunyikan" style="opacity:${l.visible?1:.4}"><i data-lucide="eye" class="lucide" style="width:14px;height:14px"></i></button>
+      <button class="lbtn ${l.locked?'locked':''}" onclick="toggleLayerLock('${l.id}')" title="Kunci Layer"><i data-lucide="${l.locked?'lock':'lock-open'}" class="lucide" style="width:14px;height:14px"></i></button>
+      <button class="lbtn" onclick="renameMapLayer('${l.id}')" title="Ubah Nama"><i data-lucide="pencil" class="lucide" style="width:14px;height:14px"></i></button>
+      <button class="lbtn" onclick="deleteMapLayer('${l.id}')" title="Hapus"><i data-lucide="trash-2" class="lucide" style="width:14px;height:14px"></i></button>
     </div>`).join('');
+  lucide.createIcons();
 }
 
-function toggleVis(id) {
-  layerVis[id] = !layerVis[id];
-  layerVis[id] ? areaLayers[id].addTo(map) : map.removeLayer(areaLayers[id]);
-  document.getElementById('vis-'+id).style.opacity = layerVis[id] ? '1' : '.3';
+function toggleLayerVis(id) {
+  const l = mapLayers.find(x => x.id === id); if (!l) return;
+  l.visible = !l.visible;
+  l.visible ? l.layer.addTo(map) : map.removeLayer(l.layer);
+  dbUpsertMapLayer(l);
+  renderLayerList();
 }
 
-function toggleLock(id) {
-  if (!layerVis[id]) { toast('Tampilkan layer terlebih dahulu', true); return; }
-  layerLocked[id] = !layerLocked[id];
-  const btn = document.getElementById('lock-'+id);
-  btn.classList.toggle('locked', layerLocked[id]);
-  toast(layerLocked[id] ? `🔒 Layer "${AREAS.find(a=>a.id===id)?.name}" dikunci` : `🔓 Layer dibuka`);
+function toggleLayerLock(id) {
+  const l = mapLayers.find(x => x.id === id); if (!l) return;
+  l.locked = !l.locked;
+  dbUpsertMapLayer(l);
+  renderLayerList();
+  toast(l.locked ? `Layer "${l.name}" dikunci` : `Layer "${l.name}" dibuka`);
+}
+
+function renameMapLayer(id) {
+  const l = mapLayers.find(x => x.id === id); if (!l) return;
+  if (l.locked) { toast('Buka kunci layer ini dulu', true); return; }
+  const newName = prompt('Nama layer:', l.name);
+  if (newName && newName.trim()) {
+    l.name = newName.trim();
+    l.layer.setTooltipContent(l.name);
+    dbUpsertMapLayer(l);
+    renderLayerList();
+  }
+}
+
+function deleteMapLayer(id) {
+  const l = mapLayers.find(x => x.id === id); if (!l) return;
+  if (l.locked) { toast('Buka kunci layer ini dulu', true); return; }
+  if (!confirm(`Hapus layer "${l.name}"?`)) return;
+  map.removeLayer(l.layer);
+  mapLayers = mapLayers.filter(x => x.id !== id);
+  dbDeleteMapLayer(id);
+  renderLayerList();
 }
 
 // ══════════════════════════════════════════════
-//   GPX IMPORT
+//   GPX / KML / KMZ IMPORT — track tertutup jadi 'area', track terbuka jadi 'path'
+//   Semua hasil import langsung tersimpan ke map_layers (Supabase), bukan sekadar tampilan sementara.
 // ══════════════════════════════════════════════
-let gpxLayers = {}; // {id: {layer, name}}
+const CLOSE_LOOP_THRESHOLD_M = 8; // toleransi GPS untuk anggap track "tertutup" jadi area
 
-function importGPX(input) {
+async function importTrackAsLayer(pts, name) {
+  if (pts.length < 2) return null;
+  const isClosed = pts.length > 3 && metersBetween(pts[0], pts[pts.length-1]) < CLOSE_LOOP_THRESHOLD_M;
+  return commitNewMapLayer(isClosed ? 'area' : 'path', pts, name);
+}
+
+function importGeoFile(input) {
   const file = input.files[0]; if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'gpx') importGPX(input);
+  else if (ext === 'kml') parseKMLFile(file, input);
+  else if (ext === 'kmz') parseKMZFile(file, input);
+  else toast('Format file tidak didukung. Gunakan .gpx, .kml, atau .kmz', true);
+}
+
+function parseKMLFile(file, input) {
   const reader = new FileReader();
-  reader.onload = e => {
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(e.target.result, 'text/xml');
-    const COLORS = ['#e05c2a','#1a7ba8','#9b59b6','#c0392b','#27ae60','#f39c12'];
-    let count = 0;
-
-    // Tracks (trk)
-    xml.querySelectorAll('trk').forEach(trk => {
-      const name = trk.querySelector('name')?.textContent || file.name.replace('.gpx','');
-      const pts = [...trk.querySelectorAll('trkpt')].map(p => [
-        parseFloat(p.getAttribute('lat')), parseFloat(p.getAttribute('lon'))
-      ]).filter(p => !isNaN(p[0]));
-      if (!pts.length) return;
-      const id = 'gpx_' + Date.now() + '_' + count;
-      const color = COLORS[Object.keys(gpxLayers).length % COLORS.length];
-      const layer = L.polyline(pts, { color, weight:3, opacity:0.85 }).addTo(map);
-      gpxLayers[id] = { layer, name };
-      addGPXtoLayerList(id, name, color);
-      count++;
-    });
-
-    // Waypoints (wpt)
-    const wpts = [...xml.querySelectorAll('wpt')];
-    if (wpts.length) {
-      const id = 'gpx_wpt_' + Date.now();
-      const markers = L.layerGroup(wpts.map(w => {
-        const lat = parseFloat(w.getAttribute('lat')), lon = parseFloat(w.getAttribute('lon'));
-        const nm  = w.querySelector('name')?.textContent || '';
-        return L.circleMarker([lat,lon],{radius:5,color:'#e05c2a',fillColor:'#fff',fillOpacity:1,weight:2})
-          .bindTooltip(nm, {permanent:false});
-      })).addTo(map);
-      gpxLayers[id] = { layer:markers, name:`${file.name} — waypoints` };
-      addGPXtoLayerList(id, gpxLayers[id].name, '#e05c2a');
-      count++;
-    }
-
-    input.value='';
-    if (count) { toast(`✅ ${count} layer dari GPX berhasil diimpor`); map.fitBounds(Object.values(gpxLayers).map(g=>g.layer.getBounds ? g.layer.getBounds() : null).filter(Boolean).reduce((a,b)=>a.extend(b))); }
-    else toast('Tidak ada track/waypoint di file GPX ini', true);
+  reader.onload = async e => {
+    try {
+      const xml = new DOMParser().parseFromString(e.target.result, 'text/xml');
+      const count = await parseKML(xml, file.name);
+      if (input) input.value = '';
+      if (count > 0) toast(count + ' layer dari KML berhasil diimpor');
+      else toast('Tidak ada data di file KML ini', true);
+    } catch(err) { toast('Gagal parse KML: ' + err.message, true); }
   };
   reader.readAsText(file);
 }
 
-function addGPXtoLayerList(id, name, color) {
-  const el = document.getElementById('layer-list');
-  const div = document.createElement('div');
-  div.className = 'layer-item'; div.id = 'gpxli-'+id;
-  div.innerHTML = `
-    <div class="layer-dot" style="background:${color};border-radius:50%"></div>
-    <div class="layer-lbl" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</div>
-    <button class="lbtn" id="gpxvis-${id}" onclick="toggleGPXVis('${id}')" title="Tampilkan/Sembunyikan">👁</button>
-    <button class="lbtn" id="gpxlock-${id}" onclick="toggleGPXLock('${id}')" title="Kunci layer">🔓</button>
-    <button class="lbtn" onclick="removeGPXLayer('${id}')" title="Hapus">🗑</button>`;
-  el.appendChild(div);
+async function parseKMZFile(file, input) {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(arrayBuffer);
+    const kmlFile = Object.keys(zip.files).find(f => f.endsWith('.kml'));
+    if (!kmlFile) { toast('Tidak ada file .kml di dalam .kmz', true); return; }
+    const kmlText = await zip.files[kmlFile].async('string');
+    const xml = new DOMParser().parseFromString(kmlText, 'text/xml');
+    const count = await parseKML(xml, file.name);
+    if (input) input.value = '';
+    if (count > 0) toast(count + ' layer dari KMZ berhasil diimpor');
+    else toast('Tidak ada data di file KMZ ini', true);
+  } catch(err) { toast('Gagal buka KMZ: ' + err.message, true); }
 }
 
-function toggleGPXVis(id) {
-  const g = gpxLayers[id]; if (!g) return;
-  if (map.hasLayer(g.layer)) { map.removeLayer(g.layer); document.getElementById('gpxvis-'+id).style.opacity='.3'; }
-  else { g.layer.addTo(map); document.getElementById('gpxvis-'+id).style.opacity='1'; }
+// Ekstrak [lat,lon] dari string "lon,lat,ele lon,lat,ele ..." (format KML)
+function parseKMLCoordString(str) {
+  return str.trim().split(/\s+/).map(triplet => {
+    const [lon, lat] = triplet.split(',').map(parseFloat);
+    return [lat, lon];
+  }).filter(p => !isNaN(p[0]) && !isNaN(p[1]));
 }
 
-function toggleGPXLock(id) {
-  const g = gpxLayers[id]; if (!g) return;
-  g.locked = !g.locked;
-  const btn = document.getElementById('gpxlock-'+id);
-  if (btn) {
-    btn.textContent = g.locked ? '🔒' : '🔓';
-    btn.style.color = g.locked ? 'var(--orange)' : '';
-    btn.title = g.locked ? 'Buka kunci layer' : 'Kunci layer';
+async function parseKML(xml, sourceName) {
+  let count = 0;
+
+  for (const pm of xml.querySelectorAll('Placemark')) {
+    const name = pm.querySelector('name')?.textContent?.trim() || sourceName;
+
+    // Polygon (area tertutup asli dari KML, misal hasil Google My Maps)
+    const poly = pm.querySelector('Polygon outerBoundaryIs coordinates, Polygon coordinates');
+    if (poly?.textContent?.trim()) {
+      const pts = parseKMLCoordString(poly.textContent);
+      if (pts.length >= 3) { await commitNewMapLayer('area', pts, name); count++; continue; }
+    }
+
+    // LineString (bisa jadi area jika ternyata tertutup, atau path)
+    const ls = pm.querySelector('LineString coordinates');
+    if (ls?.textContent?.trim()) {
+      const pts = parseKMLCoordString(ls.textContent);
+      if (pts.length >= 2) { await importTrackAsLayer(pts, name); count++; continue; }
+    }
   }
-  // GPX polyline tidak punya drag handle, tapi kita disable interaktif saat dikunci
-  g.layer.setStyle({ interactive: !g.locked });
-  toast(g.locked ? `🔒 GPX "${g.name}" dikunci` : `🔓 GPX "${g.name}" dibuka`);
+
+  return count;
 }
 
-function removeGPXLayer(id) {
-  const g = gpxLayers[id]; if (!g) return;
-  if (map.hasLayer(g.layer)) map.removeLayer(g.layer);
-  delete gpxLayers[id];
-  document.getElementById('gpxli-'+id)?.remove();
+function importGPX(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const xml = new DOMParser().parseFromString(e.target.result, 'text/xml');
+    let count = 0;
+
+    for (const trk of xml.querySelectorAll('trk')) {
+      const name = trk.querySelector('name')?.textContent?.trim() || file.name.replace(/\.gpx$/i,'');
+      const pts = [...trk.querySelectorAll('trkpt')].map(p => [
+        parseFloat(p.getAttribute('lat')), parseFloat(p.getAttribute('lon'))
+      ]).filter(p => !isNaN(p[0]));
+      if (await importTrackAsLayer(pts, name)) count++;
+    }
+
+    input.value = '';
+    if (count) toast(`${count} layer dari GPX berhasil diimpor & disimpan`);
+    else toast('Tidak ada track di file GPX ini', true);
+  };
+  reader.readAsText(file);
 }
 
 // ══════════════════════════════════════════════
@@ -1572,7 +2041,7 @@ function genQR(container, tentId, size) {
     new QRCode(container, {
       text: location.origin + location.pathname + '?tent=' + tentId,
       width: size, height: size,
-      colorDark:'#2d5631', colorLight:'#ffffff',
+      colorDark:'#111111', colorLight:'#ffffff',
       correctLevel: QRCode.CorrectLevel.M
     });
   } catch(e) {
@@ -1581,14 +2050,23 @@ function genQR(container, tentId, size) {
 }
 
 function showAllQR() {
-  const t = tents[0];
-  const url = location.origin + location.pathname + '?tent=' + t.id;
-  document.getElementById('qr-m-title').textContent = `QR Code — ${t.id} (Contoh)`;
-  document.getElementById('qr-m-url').textContent   = url;
+  const filtered = tents.filter(t => t.type !== 'panitia');
+  if (!filtered.length) { toast('Belum ada kavling', true); return; }
+  document.getElementById('qr-m-title').innerHTML = `<i data-lucide="qr-code" class="lucide" style="width:20px;height:20px"></i> Semua QR Kavling`;
+  document.getElementById('qr-m-url').textContent = `${filtered.length} kavling`;
   const c = document.getElementById('qr-m-code');
-  c.innerHTML = '';
-  genQR(c, t.id, 180);
+  c.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px">${filtered.map(t =>
+    `<div style="text-align:center;padding:6px;background:var(--surface-1);border-radius:var(--radius-md)">
+      <div id="qral-${t.id}" style="display:inline-block"></div>
+      <div style="font-size:10px;font-weight:600;margin-top:3px;color:var(--ink)">${t.id}</div>
+    </div>`
+  ).join('')}</div>`;
+  filtered.forEach(t => {
+    const div = document.getElementById('qral-' + t.id);
+    if (div) genQR(div, t.id, 80);
+  });
   openOv('m-qr');
+  lucide.createIcons();
 }
 
 function printQRPanel() {
@@ -1596,11 +2074,12 @@ function printQRPanel() {
   const t = tents.find(x=>x.id===selTentId);
   if (!t) return;
   const url = location.origin + location.pathname + '?tent=' + t.id;
-  document.getElementById('qr-m-title').textContent = `QR Code Kavling ${t.id}`;
+  document.getElementById('qr-m-title').innerHTML = `<i data-lucide="qr-code" class="lucide" style="width:20px;height:20px"></i> QR Code Kavling ${t.id}`;
   document.getElementById('qr-m-url').textContent   = url;
   const c = document.getElementById('qr-m-code');
   c.innerHTML = '';
   genQR(c, t.id, 200);
+  lucide.createIcons();
 }
 
 // ══════════════════════════════════════════════
@@ -1622,8 +2101,9 @@ function pickInc(el, type) {
 async function submitIncident() {
   if (!incType) { toast('Pilih jenis masalah terlebih dahulu', true); return; }
   const desc = document.getElementById('inc-desc').value;
+  const prio = document.getElementById('inc-priority').value;
   closeOv('m-incident'); closeBSheet();
-  const newInc = await dbInsertIncident(selTentId, incType, desc);
+  const newInc = await dbInsertIncident(selTentId, incType, desc, prio);
   if (newInc) {
     incidents.push(newInc);
     renderIncList();
@@ -1641,20 +2121,45 @@ async function resolveInc(id) {
   }
 }
 
+function updateNotifBadge() {
+  const badge = document.getElementById('notif-badge');
+  const btn = document.getElementById('notif-btn');
+  const unresolved = incidents.filter(i => i.status !== 'resolved').length;
+  if (unresolved > 0) {
+    badge.style.display = 'flex';
+    badge.textContent = unresolved;
+    btn.classList.add('active');
+  } else {
+    badge.style.display = 'none';
+    btn.classList.remove('active');
+  }
+}
+
+function openNotif() {
+  renderIncList();
+  openOv('m-notif');
+}
+
 function renderIncList() {
-  const el = document.getElementById('inc-list');
+  const el = document.getElementById('notif-list');
   if (!el) return;
-  if (!incidents.length) { el.innerHTML = '<div class="muted">Belum ada laporan</div>'; return; }
-  el.innerHTML = [...incidents].reverse().slice(0,8).map(inc => `
+  if (!incidents.length) {
+    el.innerHTML = `<div class="notif-empty"><i data-lucide="bell" class="lucide"></i><br>Belum ada laporan</div>`;
+    lucide.createIcons();
+    return;
+  }
+  el.innerHTML = [...incidents].reverse().slice(0,20).map(inc => `
     <div class="inc-card ${inc.status === 'resolved' ? 'resolved' : ''}">
       <div class="inc-title">${inc.tentId || '—'} · ${inc.type.replace(/_/g,' ')}</div>
-      <div class="inc-sub">${inc.time}</div>
+      <div class="inc-sub">${inc.time || ''}</div>
       ${inc.desc ? `<div class="muted" style="margin-top:3px">${inc.desc}</div>` : ''}
       ${inc.status !== 'resolved'
-        ? `<button onclick="resolveInc(${inc.id})" style="margin-top:6px;font-size:11px;padding:2px 8px;border-radius:5px;border:1px solid var(--green);background:none;cursor:pointer;color:var(--green);font-weight:600">✓ Tandai Selesai</button>`
-        : '<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:4px">✓ Selesai</div>'
+        ? `<button onclick="resolveInc(${inc.id})" style="margin-top:6px;font-size:11px;padding:2px 8px;border-radius:5px;border:1px solid var(--green);background:none;cursor:pointer;color:var(--green);font-weight:600"><i data-lucide="check" class="lucide" style="width:12px;height:12px"></i> Tandai Selesai</button>`
+        : '<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:4px"><i data-lucide="check-circle" class="lucide" style="width:12px;height:12px"></i> Selesai</div>'
       }
     </div>`).join('');
+  updateNotifBadge();
+  lucide.createIcons();
 }
 
 // ══════════════════════════════════════════════
@@ -1687,6 +2192,7 @@ function handleCSV(inp) {
 // ══════════════════════════════════════════════
 function setMode(m) {
   if (m === 'admin') { openOv('m-login'); return; }
+  if (m === 'peserta' && !participantData) { openOv('m-peserta-login'); return; }
   applyMode(m);
 }
 
@@ -1698,7 +2204,22 @@ function applyMode(m) {
   const rsb  = document.getElementById('rsb');
   lsb.classList.toggle('vis', m === 'admin');
   if (m !== 'admin') rsb.classList.remove('vis');
-  if (m === 'admin') { renderIncList(); }
+  const tk = document.getElementById('map-toolkit');
+  if (tk) tk.classList.toggle('vis', m === 'admin');
+  const nbtn = document.getElementById('notif-btn');
+  if (nbtn) nbtn.style.display = m === 'admin' ? 'flex' : 'none';
+  if (m === 'admin') { renderIncList(); setTimeout(() => checkZoomForEditMode(), 300); }
+  else if (editMode) { editMode = false;
+    const btn = document.getElementById('btn-edit-mode');
+    const lbl = document.getElementById('edit-mode-lbl');
+    if (lbl) lbl.textContent = 'OFF';
+    if (btn) { btn.classList.remove('on'); btn.style.color = 'var(--ink-muted)'; }
+    renderAllTents();
+  }
+  if (m === 'peserta') {
+    const coords = tents.filter(t => t.type === 'peserta').map(t => [parseFloat(t.lat), parseFloat(t.lon)]);
+    if (coords.length) setTimeout(() => map.fitBounds(coords, { padding: [40, 40], maxZoom: 19 }), 300);
+  }
   renderAllTents(); // re-render for drag support
 }
 
@@ -1719,11 +2240,122 @@ function cancelLogin() {
   document.getElementById('pin-inp').value = '';
 }
 
+// ── Participant Login ──
+let participantData = null;
+
+async function doPesertaLogin() {
+  const code = document.getElementById('peserta-code').value.trim().toUpperCase();
+  if (!code) { toast('Masukkan kode peserta', true); return; }
+  const p = await dbFindParticipant(code);
+  if (!p) { toast('Kode tidak ditemukan! Hubungi panitia.', true); return; }
+  participantData = p;
+  closeOv('m-peserta-login');
+  document.getElementById('mode-btn-peserta').innerHTML = `<i data-lucide="tent" class="lucide"></i> ${p.family_name}`;
+  applyMode('peserta');
+  toast('Selamat datang, ' + p.family_name + '!');
+}
+
+function doPesertaLogout() {
+  participantData = null;
+  document.getElementById('mode-btn-peserta').innerHTML = '<i data-lucide="tent" class="lucide"></i> Peserta';
+  toast('Berhasil logout');
+  setMode('public');
+}
+
+// ══════════════════════════════════════════════
+//   EVENT MANAGEMENT
+// ══════════════════════════════════════════════
+let currentEvent = null;
+
+async function loadCurrentEvent() {
+  const events = await dbLoadEvents();
+  if (events.length) {
+    currentEvent = events[0];
+    document.getElementById('hdr-name').textContent = currentEvent.name;
+    document.getElementById('hdr-tagline').textContent = currentEvent.tagline;
+  }
+}
+
+function openEventModal() {
+  if (currentEvent) {
+    document.getElementById('ev-name').value = currentEvent.name;
+    document.getElementById('ev-tagline').value = currentEvent.tagline;
+    document.getElementById('ev-lat').value = currentEvent.camp_lat;
+    document.getElementById('ev-lon').value = currentEvent.camp_lon;
+  }
+  openOv('m-event');
+}
+
+async function saveEvent() {
+  const ev = {
+    id: currentEvent?.id || undefined,
+    name: document.getElementById('ev-name').value || 'Sakinah Family Camp #3',
+    tagline: document.getElementById('ev-tagline').value || 'Bukit Baros · Sukabumi · Jawa Barat · 2026',
+    camp_lat: parseFloat(document.getElementById('ev-lat').value) || CAMP_CENTER[0],
+    camp_lon: parseFloat(document.getElementById('ev-lon').value) || CAMP_CENTER[1],
+    camp_zoom: CAMP_ZOOM
+  };
+  await dbUpsertEvent(ev);
+  await loadCurrentEvent();
+  closeOv('m-event');
+  toast('Event diperbarui');
+}
+
 // ══════════════════════════════════════════════
 //   HELPERS
 // ══════════════════════════════════════════════
 function centerMap() { map.setView(CAMP_CENTER, CAMP_ZOOM); }
-function exportPDF()  { window.print(); }
+function locateMe() {
+  if (!navigator.geolocation) { toast('GPS tidak didukung browser ini', true); return; }
+  toast('📍 Mencari lokasi Anda...');
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      map.flyTo([pos.coords.latitude, pos.coords.longitude], 18, { duration: 1.5 });
+      L.circleMarker([pos.coords.latitude, pos.coords.longitude], {
+        radius: 8, color: '#0099ff', fillColor: '#0099ff', fillOpacity: 0.3, weight: 2
+      }).addTo(map).bindTooltip('Lokasi Anda', { permanent: true }).openTooltip();
+      toast('📍 Lokasi ditemukan');
+    },
+    err => {
+      const msg = err.code === 1 ? 'Izinkan akses lokasi di browser' : 'Gagal mendapat lokasi. Pastikan GPS aktif.';
+      toast(msg, true);
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+function exportPDF() {
+  const el = document.createElement('div');
+  el.style.cssText = 'padding:32px 40px;font-family:Inter,sans-serif;font-size:12px;color:#111;background:#fff';
+  const rows = tents.map(t => `
+    <tr style="border-bottom:1px solid #eee">
+      <td style="padding:6px 8px">${t.id}</td>
+      <td style="padding:6px 8px">${t.size}</td>
+      <td style="padding:6px 8px">${t.type === 'panitia' ? 'Panitia' : (t.status === 'occupied' ? 'Terisi' : 'Tersedia')}</td>
+      <td style="padding:6px 8px">${t.family || '—'}</td>
+      <td style="padding:6px 8px">${t.members || '—'}</td>
+    </tr>`).join('');
+  el.innerHTML = `
+    <h1 style="font-size:20px;font-weight:700;margin-bottom:2px">Sakinah Family Camp #3</h1>
+    <p style="color:#999;margin-bottom:16px">Bukit Baros · Sukabumi · Jawa Barat · 2026</p>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="background:#f5f5f5;font-weight:600">
+        <th style="padding:8px;text-align:left">Kavling</th>
+        <th style="padding:8px;text-align:left">Ukuran</th>
+        <th style="padding:8px;text-align:left">Status</th>
+        <th style="padding:8px;text-align:left">Keluarga</th>
+        <th style="padding:8px;text-align:left">Anggota</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p style="color:#999;font-size:9px;margin-top:16px;text-align:center">Dibuat: ${new Date().toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}</p>`;
+  document.body.appendChild(el);
+  html2pdf().set({
+    margin: [10, 10, 10, 10],
+    filename: 'Resume SFC3.pdf',
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  }).from(el).save().then(() => el.remove()).catch(() => { toast('Gagal generate PDF', true); el.remove(); });
+}
 
 function openOv(id)  { document.getElementById(id).classList.add('show'); }
 function closeOv(id) { document.getElementById(id).classList.remove('show'); }
@@ -1745,6 +2377,8 @@ document.addEventListener('keydown', e => {
     closeBSheet();
     document.getElementById('rsb').classList.remove('vis');
     if (addMode) { addMode=false; document.getElementById('btn-add')?.classList.remove('on'); map.getContainer().style.cursor=''; }
+    if (isDrawingPath) stopDrawingPath();
+    if (isDrawingArea) stopDrawingArea();
     document.querySelectorAll('.ov.show').forEach(o => { if (o.id !== 'm-login') o.classList.remove('show'); });
   }
 });
@@ -1756,7 +2390,24 @@ document.querySelectorAll('.ov').forEach(ov => {
   });
 });
 
-document.addEventListener('DOMContentLoaded', initMap);
+function updateOnlineStatus() {
+  const banner = document.getElementById('offline-banner');
+  if (banner) banner.style.display = navigator.onLine ? 'none' : 'block';
+}
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  updateOnlineStatus();
+  lucide.createIcons();
+  initMap();
+});
 </script>
 </body>
 </html>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx creator="StravaGPX" version="1.1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+ <metadata>
+  <name>Area Camp Utama + Kajian Outdoor</name>
+  <desc>Estimasi 35 Tenda melingkar di tengahnta ada tempat api Ungun</desc>
+  <author>
+   <name>Ihsan Faturohman</name>
+   <link href="https://www.strava.com/athletes/72094822"/>
+  </author>
+  <copyright author="OpenStreetMap contributors">
+   <year>2020</year>
+   <license>https://www.openstreetmap.org/copyright</license>
+  </copyright>
+  <link href="https://www.strava.com/routes/3504501222019869308"/>
+ </metadata>
+ <trk>
+  <name>Area Camp Utama + Kajian Outdoor</name>
+  <desc>Estimasi 35 Tenda melingkar di tengahnta ada tempat api Ungun</desc>
+  <link href="https://www.strava.com/routes/3504501222019869308"/>
+  <type>walking</type>
+  <trkseg>
+   <trkpt lat="-6.9661800000000005" lon="106.95753">
+    <ele>516.61</ele>
+   </trkpt>
+   <trkpt lat="-6.966410000000001" lon="106.95755000000001">
+    <ele>514.78</ele>
+   </trkpt>
+   <trkpt lat="-6.9664" lon="106.95748">
+    <ele>514.23</ele>
+   </trkpt>
+   <trkpt lat="-6.96621" lon="106.95744">
+    <ele>514.1</ele>
+   </trkpt>
+   <trkpt lat="-6.96616" lon="106.95750000000001">
+    <ele>516.5600000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.9661800000000005" lon="106.95753">
+    <ele>516.61</ele>
+   </trkpt>
+  </trkseg>
+ </trk>
+</gpx>

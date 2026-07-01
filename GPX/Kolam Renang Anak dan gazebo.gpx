@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx creator="StravaGPX" version="1.1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+ <metadata>
+  <name>Kolam Renang Anak dan gazebo</name>
+  <author>
+   <name>Ihsan Faturohman</name>
+   <link href="https://www.strava.com/athletes/72094822"/>
+  </author>
+  <copyright author="OpenStreetMap contributors">
+   <year>2020</year>
+   <license>https://www.openstreetmap.org/copyright</license>
+  </copyright>
+  <link href="https://www.strava.com/routes/3504497489995802748"/>
+ </metadata>
+ <trk>
+  <name>Kolam Renang Anak dan gazebo</name>
+  <link href="https://www.strava.com/routes/3504497489995802748"/>
+  <type>walking</type>
+  <trkseg>
+   <trkpt lat="-6.966200000000001" lon="106.95788">
+    <ele>521.32</ele>
+   </trkpt>
+   <trkpt lat="-6.96616" lon="106.95794000000001">
+    <ele>522.6500000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.966240000000001" lon="106.95805000000001">
+    <ele>522.11</ele>
+   </trkpt>
+   <trkpt lat="-6.966310000000001" lon="106.95800000000001">
+    <ele>520.42</ele>
+   </trkpt>
+   <trkpt lat="-6.966240000000001" lon="106.95789">
+    <ele>520.42</ele>
+   </trkpt>
+  </trkseg>
+ </trk>
+</gpx>

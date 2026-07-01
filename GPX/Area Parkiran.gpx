@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx creator="StravaGPX" version="1.1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+ <metadata>
+  <name>Area Parkiran</name>
+  <author>
+   <name>Ihsan Faturohman</name>
+   <link href="https://www.strava.com/athletes/72094822"/>
+  </author>
+  <copyright author="OpenStreetMap contributors">
+   <year>2020</year>
+   <license>https://www.openstreetmap.org/copyright</license>
+  </copyright>
+  <link href="https://www.strava.com/routes/3504491698810555360"/>
+ </metadata>
+ <trk>
+  <name>Area Parkiran</name>
+  <link href="https://www.strava.com/routes/3504491698810555360"/>
+  <type>walking</type>
+  <trkseg>
+   <trkpt lat="-6.9659" lon="106.95766">
+    <ele>525.14</ele>
+   </trkpt>
+   <trkpt lat="-6.96595" lon="106.95760000000001">
+    <ele>522.5500000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.965770000000001" lon="106.95739">
+    <ele>518.02</ele>
+   </trkpt>
+   <trkpt lat="-6.965700000000001" lon="106.95748">
+    <ele>521.6200000000001</ele>
+   </trkpt>
+   <trkpt lat="-6.9658500000000005" lon="106.95767000000001">
+    <ele>525.7400000000001</ele>
+   </trkpt>
+  </trkseg>
+ </trk>
+</gpx>
