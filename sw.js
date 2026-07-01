@@ -3,8 +3,8 @@ const STATIC_ASSETS = [
   '.',
   'index.html',
   'manifest.json',
-  'icon-192.svg',
-  'icon-512.svg'
+  'assets/icon-192.svg',
+  'assets/icon-512.svg'
 ];
 const CDN_CACHE = 'sfc3-cdn-v1';
 const CDN_URLS = [
