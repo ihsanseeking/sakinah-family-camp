@@ -126,10 +126,12 @@
     .stat-val { font-size:22px; font-weight:700; letter-spacing:-.5px; color:var(--ink); }
     .stat-lbl { font-size:10px; font-weight:500; color:var(--ink-muted); margin-top:2px; text-transform:uppercase; letter-spacing:.5px; }
 
-    .layer-item { display:flex; align-items:center; gap:7px; padding:6px 8px; border-radius:var(--radius-sm); background:var(--surface-1); margin-bottom:4px; }
+    .layer-item { padding:6px 8px; border-radius:var(--radius-sm); background:var(--surface-1); margin-bottom:4px; }
+    .layer-row { display:flex; align-items:center; gap:7px; }
     .layer-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
-    .layer-lbl { font-size:12px; font-weight:500; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .lbtn { width:26px; height:26px; border:none; background:transparent; cursor:pointer; border-radius:var(--radius-xs); font-size:13px; display:flex; align-items:center; justify-content:center; transition:background .1s; color:var(--ink-muted); }
+    .layer-lbl { font-size:12px; font-weight:500; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; min-width:0; }
+    .layer-full-name { font-size:11px; color:var(--ink-muted); margin-top:5px; padding-left:17px; word-break:break-word; line-height:1.4; }
+    .lbtn { width:26px; height:26px; border:none; background:transparent; cursor:pointer; border-radius:var(--radius-xs); font-size:13px; display:flex; align-items:center; justify-content:center; transition:background .1s; color:var(--ink-muted); flex-shrink:0; }
     .lbtn:hover { background:var(--surface-2); }
     .lbtn.locked { color:var(--orange); }
 
@@ -775,7 +777,7 @@ async function dbLoadMapLayers() {
 async function dbUpsertMapLayer(l) {
   const { error } = await sb.from('map_layers').upsert({
     id: l.id, type: l.type, name: l.name, color: l.color, coords: l.coords,
-    visible: l.visible, locked: l.locked, updated_at: new Date().toISOString()
+    visible: l.visible, updated_at: new Date().toISOString()
   }, { onConflict: 'id' });
   if (error) console.error('dbUpsertMapLayer:', error);
 }
@@ -870,7 +872,7 @@ let addMode     = false;
 let editMode    = false;  // global edit mode — tampilkan/sembunyikan semua handles
 let incType     = null;
 let map, tentMarkers = {};
-let mapLayers = [];  // {id,type:'area'|'path',name,color,coords,visible,locked,layer}
+let mapLayers = [];  // {id,type:'area'|'path',name,color,coords,visible,layer} — koordinat, tidak bisa dipindah, jadi tanpa opsi kunci
 let tents     = [];
 let incidents = [];
 
@@ -1333,7 +1335,7 @@ function toggleEditMode() {
     if (ov.handles && editMode) ov.handles.forEach(h => h.addTo(map));
     else if (ov.handles) ov.handles.forEach(h => h.remove());
   });
-  toast(editMode ? 'Mode Edit aktif — seret ✛ untuk pindah kavling' : 'Mode Edit dimatikan');
+  toast(editMode ? 'Mode Edit aktif — drag gambar/tenda untuk pindahkan' : 'Mode Edit dimatikan');
 }
 
 function checkZoomForEditMode() {
@@ -1368,11 +1370,6 @@ const HANDLE_ICON = () => L.divIcon({
   html: `<div style="width:14px;height:14px;background:#fff;border:2.5px solid #111;border-radius:50%;cursor:crosshair;box-shadow:0 1px 4px #0005"></div>`,
   className:'', iconSize:[14,14], iconAnchor:[7,7]
 });
-const MOVE_ICON = () => L.divIcon({
-  html: `<div style="width:18px;height:18px;background:rgba(255,255,255,0.9);border:2px solid #111;border-radius:4px;cursor:move;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 1px 4px #0005">✛</div>`,
-  className:'', iconSize:[18,18], iconAnchor:[9,9]
-});
-
 // Hitung bounds (latN,latS,lonW,lonE) dari tengah peta + aspect ratio gambar
 function boundsForImage(natW, natH) {
   const b    = map.getBounds();
@@ -1390,33 +1387,85 @@ function boundsForImage(natW, natH) {
 function ROTATE_ICON() {
   return L.divIcon({ html: `<div style="width:22px;height:22px;background:rgba(255,255,255,0.95);border:2px solid #2196f3;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:grab;box-shadow:0 1px 4px #0005;user-select:none">🔄</div>`, className:'', iconSize:[22,22], iconAnchor:[11,11] });
 }
+function PIVOT_ICON() {
+  return L.divIcon({
+    className:'',
+    html:`<div title="Titik Putar — drag untuk pindahkan" style="width:20px;height:20px;cursor:crosshair;position:relative;">
+      <div style="position:absolute;inset:0;border:2px solid #ff6b35;border-radius:50%;background:rgba(255,107,53,.15);pointer-events:none;"></div>
+      <div style="position:absolute;top:50%;left:2px;right:2px;height:1.5px;background:#ff6b35;transform:translateY(-50%);pointer-events:none;"></div>
+      <div style="position:absolute;left:50%;top:2px;bottom:2px;width:1.5px;background:#ff6b35;transform:translateX(-50%);pointer-events:none;"></div>
+    </div>`,
+    iconSize:[20,20], iconAnchor:[10,10]
+  });
+}
 
 function createOverlayGroup(id, url, opacity, latN, latS, lonW, lonE, initRotation) {
-  const imgLayer = L.imageOverlay(url, [[latS,lonW],[latN,lonE]], { opacity: opacity/100, interactive: false });
+  // ── Internal geometry: center + half-sizes in meters + rotation ──
+  // Handles are positioned at VISUAL (rotated) corners, not bounding-box corners.
+  const LAT_M = 111320;
+  const getLonM = lat => 111320 * Math.cos(lat * Math.PI / 180);
 
-  const hNW = L.marker([latN,lonW], { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
-  const hNE = L.marker([latN,lonE], { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
-  const hSW = L.marker([latS,lonW], { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
-  const hSE = L.marker([latS,lonE], { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
-  const hCenter = L.marker([(latN+latS)/2,(lonW+lonE)/2], { icon:MOVE_ICON(), draggable:true, zIndexOffset:1000 });
+  let rot = ((initRotation || 0) % 360 + 360) % 360;
+  let cLat = (latN + latS) / 2;
+  let cLon = (lonW + lonE) / 2;
+  let hw   = Math.abs(lonE - lonW) / 2 * getLonM(cLat); // half-width  (image X axis)
+  let hh   = Math.abs(latN - latS) / 2 * LAT_M;          // half-height (image Y axis)
 
-  let rot = initRotation || 0;
-  const state = { latN, latS, lonW, lonE };
+  // Rotation pivot (world coords). Moves with image; stays fixed during rotate.
+  let pivLat = cLat, pivLon = cLon;
 
-  // Posisi handle rotasi: di atas center, jarak tetap dalam meter
-  function rotHandleLatLng() {
-    const cLat = (state.latN + state.latS) / 2;
-    const cLon = (state.lonW + state.lonE) / 2;
-    const LAT_M = 111320;
-    const LON_M = 111320 * Math.cos(cLat * Math.PI / 180);
-    const r     = rot * Math.PI / 180;
-    const dist  = Math.max(Math.abs(state.latN-state.latS)*LAT_M, Math.abs(state.lonE-state.lonW)*LON_M) * 0.5 + 20;
-    return [cLat + (dist * Math.cos(r)) / LAT_M, cLon + (dist * Math.sin(r)) / LON_M];
+  // Axis-aligned bounding box kept in sync for imageOverlay & DB
+  const state = {};
+  function syncBbox() {
+    const LM = getLonM(cLat);
+    state.latN = cLat + hh / LAT_M;
+    state.latS = cLat - hh / LAT_M;
+    state.lonW = cLon - hw / LM;
+    state.lonE = cLon + hw / LM;
+  }
+  syncBbox();
+
+  // Local screen-frame offset (dx=east m, dy=south m) → world [lat, lon]
+  // Uses CSS rotate convention: rotate(rot deg) is clockwise.
+  function rpt(dx, dy) {
+    const r  = rot * Math.PI / 180;
+    const ex = dx * Math.cos(r) - dy * Math.sin(r); // east
+    const sy = dx * Math.sin(r) + dy * Math.cos(r); // south (screen-y)
+    const LM = getLonM(cLat);
+    return [cLat - sy / LAT_M, cLon + ex / LM];
   }
 
-  const hRotate = L.marker(rotHandleLatLng(), { icon:ROTATE_ICON(), draggable:true, zIndexOffset:1100 });
+  // World [lat, lon] → local frame (dx east m, dy south m) relative to current center
+  function toLocal(lat, lon) {
+    const LM = getLonM(cLat);
+    const ex = (lon - cLon) * LM;
+    const sy = -(lat - cLat) * LAT_M;
+    const r  = -rot * Math.PI / 180; // inverse rotation
+    return {
+      dx: ex * Math.cos(r) - sy * Math.sin(r),
+      dy: ex * Math.sin(r) + sy * Math.cos(r)
+    };
+  }
 
-  // Patch _reset agar append rotate() ke transform yang sudah di-set Leaflet
+  const ROT_OFFSET = 24; // meters above image top edge for rotate handle
+  function posNW()   { return rpt(-hw, -hh); }
+  function posNE()   { return rpt(+hw, -hh); }
+  function posSW()   { return rpt(-hw, +hh); }
+  function posSE()   { return rpt(+hw, +hh); }
+  function posStem() { return rpt(0, -hh); }
+  function posRot()  { return rpt(0, -(hh + ROT_OFFSET)); }
+
+  const imgLayer = L.imageOverlay(url, [[state.latS,state.lonW],[state.latN,state.lonE]], { opacity: opacity/100, interactive: true });
+
+  const hNW    = L.marker(posNW(),  { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
+  const hNE    = L.marker(posNE(),  { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
+  const hSW    = L.marker(posSW(),  { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
+  const hSE    = L.marker(posSE(),  { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
+  const hRotate = L.marker(posRot(), { icon:ROTATE_ICON(), draggable:true, zIndexOffset:1100 });
+  const rotStem = L.polyline([posStem(), posRot()], { color:'#2196f3', weight:1.5, dashArray:'3,4', interactive:false });
+  const hPivot  = L.marker([pivLat, pivLon], { icon:PIVOT_ICON(), draggable:true, zIndexOffset:1050 });
+
+  // Patch _reset: append CSS rotate to Leaflet's transform
   const _origReset = imgLayer._reset.bind(imgLayer);
   imgLayer._reset = function() {
     _origReset();
@@ -1427,91 +1476,152 @@ function createOverlayGroup(id, url, opacity, latN, latS, lonW, lonE, initRotati
     }
   };
 
+  function refresh() {
+    syncBbox();
+    imgLayer.setBounds([[state.latS, state.lonW], [state.latN, state.lonE]]);
+    hNW.setLatLng(posNW()); hNE.setLatLng(posNE());
+    hSW.setLatLng(posSW()); hSE.setLatLng(posSE());
+    hRotate.setLatLng(posRot());
+    rotStem.setLatLngs([posStem(), posRot()]);
+    hPivot.setLatLng([pivLat, pivLon]);
+    imgLayer._reset();
+  }
+
   function applyRotation(deg) {
     rot = ((deg % 360) + 360) % 360;
     imgLayer._reset();
-    hRotate.setLatLng(rotHandleLatLng());
+    hNW.setLatLng(posNW()); hNE.setLatLng(posNE());
+    hSW.setLatLng(posSW()); hSE.setLatLng(posSE());
+    hRotate.setLatLng(posRot());
+    rotStem.setLatLngs([posStem(), posRot()]);
+    hPivot.setLatLng([pivLat, pivLon]);
     const ov = overlays.find(o => o.id === id);
-    if (ov) { ov.rotation = rot; }
+    if (ov) ov.rotation = rot;
   }
 
-  function refresh() {
-    imgLayer.setBounds([[state.latS,state.lonW],[state.latN,state.lonE]]);
-    hNW.setLatLng([state.latN, state.lonW]);
-    hNE.setLatLng([state.latN, state.lonE]);
-    hSW.setLatLng([state.latS, state.lonW]);
-    hSE.setLatLng([state.latS, state.lonE]);
-    hCenter.setLatLng([(state.latN+state.latS)/2, (state.lonW+state.lonE)/2]);
-    hRotate.setLatLng(rotHandleLatLng());
-    imgLayer._reset();
+  // Resize: drag newLat/Lon corner, keep opposite fixedLat/Lon corner anchored
+  function cornerDrag(newLat, newLon, fixedLat, fixedLon) {
+    cLat = (fixedLat + newLat) / 2;
+    cLon = (fixedLon + newLon) / 2;
+    const { dx, dy } = toLocal(newLat, newLon);
+    hw = Math.abs(dx);
+    hh = Math.abs(dy);
+    if (hw < 1) hw = 1; // minimum 1m
+    if (hh < 1) hh = 1;
   }
 
-  // Terapkan aspect ratio jika locked — gunakan lon sebagai acuan lebar
-  function applyAspect(anchorLatS, anchorLonE) {
+  function applyAspect() {
     const ov = overlays.find(o => o.id === id);
     if (!ov?.lockAspect || !ov.natW || !ov.natH) return;
-    const cLat  = (state.latN + state.latS) / 2;
-    const LON_M = 111320 * Math.cos(cLat * Math.PI / 180);
-    const LAT_M = 111320;
-    const wM    = Math.abs(state.lonE - state.lonW) * LON_M;
-    const hM    = wM * (ov.natH / ov.natW);
-    state.latN  = (anchorLatS ?? state.latS) + hM / LAT_M;
+    hh = hw * (ov.natH / ov.natW);
   }
 
   hNW.on('drag', e => {
-    state.latN = e.latlng.lat; state.lonW = e.latlng.lng;
-    applyAspect(state.latS, state.lonE);
-    refresh();
+    const [fLat, fLon] = posSE();
+    cornerDrag(e.latlng.lat, e.latlng.lng, fLat, fLon);
+    applyAspect(); refresh();
   });
   hNE.on('drag', e => {
-    state.latN = e.latlng.lat; state.lonE = e.latlng.lng;
-    applyAspect(state.latS, state.lonW);
-    refresh();
+    const [fLat, fLon] = posSW();
+    cornerDrag(e.latlng.lat, e.latlng.lng, fLat, fLon);
+    applyAspect(); refresh();
   });
   hSW.on('drag', e => {
-    state.latS = e.latlng.lat; state.lonW = e.latlng.lng;
-    // aspect: fix latN, adjust latS berdasarkan lebar baru
-    const ov = overlays.find(o => o.id === id);
-    if (ov?.lockAspect && ov.natW && ov.natH) {
-      const LON_M = 111320 * Math.cos(state.latN * Math.PI / 180);
-      const wM    = Math.abs(state.lonE - state.lonW) * LON_M;
-      state.latS  = state.latN - wM * (ov.natH / ov.natW) / 111320;
-    }
-    refresh();
+    const [fLat, fLon] = posNE();
+    cornerDrag(e.latlng.lat, e.latlng.lng, fLat, fLon);
+    applyAspect(); refresh();
   });
   hSE.on('drag', e => {
-    state.latS = e.latlng.lat; state.lonE = e.latlng.lng;
-    const ov = overlays.find(o => o.id === id);
-    if (ov?.lockAspect && ov.natW && ov.natH) {
-      const LON_M = 111320 * Math.cos(state.latN * Math.PI / 180);
-      const wM    = Math.abs(state.lonE - state.lonW) * LON_M;
-      state.latS  = state.latN - wM * (ov.natH / ov.natW) / 111320;
-    }
-    refresh();
-  });
-  hCenter.on('drag', e => {
-    const dLat = e.latlng.lat - (state.latN+state.latS)/2;
-    const dLon = e.latlng.lng - (state.lonW+state.lonE)/2;
-    state.latN+=dLat; state.latS+=dLat; state.lonW+=dLon; state.lonE+=dLon;
-    refresh();
+    const [fLat, fLon] = posNW();
+    cornerDrag(e.latlng.lat, e.latlng.lng, fLat, fLon);
+    applyAspect(); refresh();
   });
 
-  // Rotasi: hitung sudut center → posisi handle
+  // Rotation: angle from image center → drag position; rotate image center around pivot
   hRotate.on('drag', e => {
-    const cLat=(state.latN+state.latS)/2, cLon=(state.lonW+state.lonE)/2;
-    const LON_M=111320*Math.cos(cLat*Math.PI/180), LAT_M=111320;
-    const dy=(e.latlng.lat-cLat)*LAT_M, dx=(e.latlng.lng-cLon)*LON_M;
-    const deg = Math.atan2(dx, dy) * 180 / Math.PI;
-    applyRotation(deg);
+    const LM = getLonM(cLat);
+    const dx = (e.latlng.lng - cLon) * LM;
+    const dy = -(e.latlng.lat - cLat) * LAT_M; // north for bearing
+    const newRot = ((Math.atan2(dx, dy) * 180 / Math.PI) % 360 + 360) % 360;
+
+    // Rotate image center around pivot by delta angle
+    if (pivLat !== cLat || pivLon !== cLon) {
+      let dR = (newRot - rot) * Math.PI / 180;
+      // Normalize dR to [-π, π] to avoid wrap-around jump
+      while (dR >  Math.PI) dR -= 2 * Math.PI;
+      while (dR < -Math.PI) dR += 2 * Math.PI;
+      const LM2 = getLonM(pivLat);
+      const ox  = (cLon - pivLon) * LM2; // east from pivot
+      const oy  = (cLat - pivLat) * LAT_M; // north from pivot
+      // CW rotation in screen coords → in (east,north): e'=e·cos+n·sin, n'=-e·sin+n·cos
+      cLon = pivLon + (ox * Math.cos(dR) + oy * Math.sin(dR)) / getLonM(pivLat);
+      cLat = pivLat + (-ox * Math.sin(dR) + oy * Math.cos(dR)) / LAT_M;
+    }
+
+    rot = newRot;
+    syncBbox();
+    imgLayer.setBounds([[state.latS, state.lonW], [state.latN, state.lonE]]);
+    hNW.setLatLng(posNW()); hNE.setLatLng(posNE());
+    hSW.setLatLng(posSW()); hSE.setLatLng(posSE());
+    hRotate.setLatLng(posRot());
+    rotStem.setLatLngs([posStem(), posRot()]);
+    imgLayer._reset();
+    const ov = overlays.find(o => o.id === id);
+    if (ov) ov.rotation = rot;
   });
 
-  [hNW,hNE,hSW,hSE,hCenter,hRotate].forEach(h => h.on('dragend', () => {
+  // Pivot: drag to reposition rotation center
+  hPivot.on('drag', e => { pivLat = e.latlng.lat; pivLon = e.latlng.lng; });
+
+  // Image drag: move whole image (pivot moves with it)
+  let imgDragging = false, imgDragStart = null;
+  function isLocked() { return overlays.find(o => o.id === id)?.locked; }
+  function onImgDragStart(e) {
+    if (!editMode || isLocked() || addMode) return;
+    L.DomEvent.stop(e);
+    imgDragging = true;
+    imgDragStart = map.mouseEventToLatLng(e.touches ? e.touches[0] : e);
+    map.dragging.disable();
+  }
+  function onImgDragMove(e) {
+    if (!imgDragging) return;
+    const cur  = map.mouseEventToLatLng(e.touches ? e.touches[0] : e);
+    const dLat = cur.lat - imgDragStart.lat, dLon = cur.lng - imgDragStart.lng;
+    imgDragStart = cur;
+    cLat   += dLat; cLon   += dLon;
+    pivLat += dLat; pivLon += dLon;
+    refresh();
+  }
+  function onImgDragEnd() {
+    if (!imgDragging) return;
+    imgDragging = false;
+    map.dragging.enable();
     const ov = overlays.find(o => o.id === id);
-    if (ov) { Object.assign(ov, state); ov.rotation=rot; dbUpsertOverlay(ov); }
+    if (ov) { Object.assign(ov, state); dbUpsertOverlay(ov); }
+  }
+  imgLayer.once('add', () => {
+    const el = imgLayer.getElement();
+    if (!el) return;
+    el.style.cursor = 'move';
+    L.DomEvent.on(el, 'mousedown touchstart', onImgDragStart);
+    L.DomEvent.on(document, 'mousemove touchmove', onImgDragMove);
+    L.DomEvent.on(document, 'mouseup touchend', onImgDragEnd);
+  });
+  function destroyDrag() {
+    const el = imgLayer.getElement();
+    if (el) L.DomEvent.off(el, 'mousedown touchstart', onImgDragStart);
+    L.DomEvent.off(document, 'mousemove touchmove', onImgDragMove);
+    L.DomEvent.off(document, 'mouseup touchend', onImgDragEnd);
+  }
+
+  [hNW, hNE, hSW, hSE, hRotate].forEach(h => h.on('dragend', () => {
+    syncBbox();
+    const ov = overlays.find(o => o.id === id);
+    if (ov) { Object.assign(ov, state); ov.rotation = rot; dbUpsertOverlay(ov); }
   }));
 
-  const handles = [hNW,hNE,hSW,hSE,hCenter,hRotate];
-  return { imgLayer, handles, state, getRotation:()=>rot, applyRotation };
+  const handles = [hNW, hNE, hSW, hSE, hRotate, rotStem, hPivot];
+  return { imgLayer, handles, state, getRotation:()=>rot, applyRotation, destroyDrag };
 }
 
 // ── Supabase Storage for Overlays ──
@@ -1617,10 +1727,10 @@ async function applyImageOverlay() {
       if (result) { url = result.url; storagePath = result.path; }
     }
 
-    const { imgLayer, handles, state, getRotation, applyRotation } = createOverlayGroup(id, url, opacity, latN, latS, lonW, lonE, 0);
+    const { imgLayer, handles, state, getRotation, applyRotation, destroyDrag } = createOverlayGroup(id, url, opacity, latN, latS, lonW, lonE, 0);
     imgLayer.addTo(map);
     if (editMode) handles.forEach(h => h.addTo(map));
-    const newOv = { id, name, url, imgLayer, handles, visible:true, opacity, natW:_ovPendingW, natH:_ovPendingH, lockAspect:true, locked:false, rotation:0, getRotation, applyRotation, storagePath, ...state };
+    const newOv = { id, name, url, imgLayer, handles, visible:true, opacity, natW:_ovPendingW, natH:_ovPendingH, lockAspect:true, locked:false, rotation:0, getRotation, applyRotation, destroyDrag, storagePath, ...state };
     overlays.push(newOv);
     await dbUpsertOverlay(newOv);
   }
@@ -1647,6 +1757,7 @@ async function deleteOverlay(id) {
   if (!confirm('Hapus overlay ini?')) return;
   const idx = overlays.findIndex(o => o.id === id); if (idx===-1) return;
   overlays[idx].imgLayer.remove(); overlays[idx].handles.forEach(h => h.remove());
+  overlays[idx].destroyDrag?.();
   if (overlays[idx].storagePath) await deleteOverlayFromStorage(overlays[idx].storagePath);
   overlays.splice(idx,1);
   await dbDeleteOverlay(id);
@@ -1719,8 +1830,8 @@ function removeOverlayLocal(id) {
 
 function addOverlayFromRow(d) {
   if (!d.url) return;
-  const { imgLayer, handles, state, getRotation, applyRotation } = createOverlayGroup(d.id, d.url, d.opacity||70, d.lat_n, d.lat_s, d.lon_w, d.lon_e, d.rotation||0);
-  const ov = { id:d.id, name:d.name, url:d.url, imgLayer, handles, visible:d.visible!==false, opacity:d.opacity||70, natW:d.nat_w, natH:d.nat_h, lockAspect:d.lock_aspect!==false, locked:d.locked||false, rotation:d.rotation||0, getRotation, applyRotation, storagePath:d.storage_path||null, latN:d.lat_n, latS:d.lat_s, lonW:d.lon_w, lonE:d.lon_e };
+  const { imgLayer, handles, state, getRotation, applyRotation, destroyDrag } = createOverlayGroup(d.id, d.url, d.opacity||70, d.lat_n, d.lat_s, d.lon_w, d.lon_e, d.rotation||0);
+  const ov = { id:d.id, name:d.name, url:d.url, imgLayer, handles, visible:d.visible!==false, opacity:d.opacity||70, natW:d.nat_w, natH:d.nat_h, lockAspect:d.lock_aspect!==false, locked:d.locked||false, rotation:d.rotation||0, getRotation, applyRotation, destroyDrag, storagePath:d.storage_path||null, latN:d.lat_n, latS:d.lat_s, lonW:d.lon_w, lonE:d.lon_e };
   if (ov.visible) { imgLayer.addTo(map); if (editMode && !ov.locked) handles.forEach(h => h.addTo(map)); }
   overlays.push(ov);
   renderOverlayList();
@@ -1782,7 +1893,7 @@ async function commitNewMapLayer(type, coordsLatLng, defaultName) {
   const l = {
     id: type + '_' + Date.now(), type, name: defaultName,
     color: type === 'area' ? color : PATH_COLOR,
-    coords: coordsLatLng, visible: true, locked: false, layer: null
+    coords: coordsLatLng, visible: true, layer: null
   };
   renderMapLayerShape(l);
   mapLayers.push(l);
@@ -1876,17 +1987,26 @@ async function onMapClick(e) {
   toast(`Kavling ${id} ditambahkan`);
 }
 
+let expandedLayerIds = new Set();
+
+function toggleLayerExpand(id) {
+  if (expandedLayerIds.has(id)) expandedLayerIds.delete(id); else expandedLayerIds.add(id);
+  renderLayerList();
+}
+
 function renderLayerList() {
   const el = document.getElementById('layer-list'); if (!el) return;
   if (!mapLayers.length) { el.innerHTML = '<div class="muted" style="font-size:11px">Belum ada layer</div>'; return; }
   el.innerHTML = mapLayers.map(l => `
     <div class="layer-item">
-      <div class="layer-dot" style="background:${l.color}"></div>
-      <div class="layer-lbl" title="${l.name}">${l.name}</div>
-      <button class="lbtn" onclick="toggleLayerVis('${l.id}')" title="Tampilkan/Sembunyikan" style="opacity:${l.visible?1:.4}"><i data-lucide="eye" class="lucide" style="width:14px;height:14px"></i></button>
-      <button class="lbtn ${l.locked?'locked':''}" onclick="toggleLayerLock('${l.id}')" title="Kunci Layer"><i data-lucide="${l.locked?'lock':'lock-open'}" class="lucide" style="width:14px;height:14px"></i></button>
-      <button class="lbtn" onclick="renameMapLayer('${l.id}')" title="Ubah Nama"><i data-lucide="pencil" class="lucide" style="width:14px;height:14px"></i></button>
-      <button class="lbtn" onclick="deleteMapLayer('${l.id}')" title="Hapus"><i data-lucide="trash-2" class="lucide" style="width:14px;height:14px"></i></button>
+      <div class="layer-row">
+        <div class="layer-dot" style="background:${l.color}"></div>
+        <div class="layer-lbl" onclick="toggleLayerExpand('${l.id}')">${l.name}</div>
+        <button class="lbtn" onclick="toggleLayerVis('${l.id}')" title="Tampilkan/Sembunyikan" style="opacity:${l.visible?1:.4}"><i data-lucide="eye" class="lucide" style="width:14px;height:14px"></i></button>
+        <button class="lbtn" onclick="renameMapLayer('${l.id}')" title="Ubah Nama"><i data-lucide="pencil" class="lucide" style="width:14px;height:14px"></i></button>
+        <button class="lbtn" onclick="deleteMapLayer('${l.id}')" title="Hapus"><i data-lucide="trash-2" class="lucide" style="width:14px;height:14px"></i></button>
+      </div>
+      ${expandedLayerIds.has(l.id) ? `<div class="layer-full-name">${l.name}</div>` : ''}
     </div>`).join('');
   lucide.createIcons();
 }
@@ -1899,17 +2019,8 @@ function toggleLayerVis(id) {
   renderLayerList();
 }
 
-function toggleLayerLock(id) {
-  const l = mapLayers.find(x => x.id === id); if (!l) return;
-  l.locked = !l.locked;
-  dbUpsertMapLayer(l);
-  renderLayerList();
-  toast(l.locked ? `Layer "${l.name}" dikunci` : `Layer "${l.name}" dibuka`);
-}
-
 function renameMapLayer(id) {
   const l = mapLayers.find(x => x.id === id); if (!l) return;
-  if (l.locked) { toast('Buka kunci layer ini dulu', true); return; }
   const newName = prompt('Nama layer:', l.name);
   if (newName && newName.trim()) {
     l.name = newName.trim();
@@ -1921,7 +2032,6 @@ function renameMapLayer(id) {
 
 function deleteMapLayer(id) {
   const l = mapLayers.find(x => x.id === id); if (!l) return;
-  if (l.locked) { toast('Buka kunci layer ini dulu', true); return; }
   if (!confirm(`Hapus layer "${l.name}"?`)) return;
   map.removeLayer(l.layer);
   mapLayers = mapLayers.filter(x => x.id !== id);
