@@ -778,15 +778,16 @@
   <!-- Stats -->
   <div id="dp-stats" style="display:flex;gap:8px;padding:12px 16px;flex-shrink:0;background:var(--surface-1);border-bottom:1px solid var(--hairline)"></div>
   <!-- Tabs -->
-  <div style="display:flex;border-bottom:1px solid var(--hairline);flex-shrink:0;background:var(--canvas)">
-    <button class="dp-tab on" id="dptab-all"    onclick="setDataTab('all')"    style="flex:1;padding:10px;border:none;background:transparent;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--ink-muted)">Semua</button>
-    <button class="dp-tab"    id="dptab-peserta" onclick="setDataTab('peserta')" style="flex:1;padding:10px;border:none;background:transparent;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--ink-muted)">Peserta</button>
-    <button class="dp-tab"    id="dptab-panitia" onclick="setDataTab('panitia')" style="flex:1;padding:10px;border:none;background:transparent;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--ink-muted)">Panitia</button>
-    <button class="dp-tab"    id="dptab-unassigned" onclick="setDataTab('unassigned')" style="flex:1;padding:10px;border:none;background:transparent;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--ink-muted)">Belum</button>
+  <div style="display:flex;border-bottom:1px solid var(--hairline);flex-shrink:0;background:var(--canvas);overflow-x:auto">
+    <button class="dp-tab on" id="dptab-all"        onclick="setDataTab('all')"        style="flex:1;min-width:60px;padding:10px 6px;border:none;background:transparent;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--ink-muted);white-space:nowrap">Semua</button>
+    <button class="dp-tab"    id="dptab-peserta"    onclick="setDataTab('peserta')"    style="flex:1;min-width:60px;padding:10px 6px;border:none;background:transparent;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--ink-muted);white-space:nowrap">Peserta</button>
+    <button class="dp-tab"    id="dptab-panitia"    onclick="setDataTab('panitia')"    style="flex:1;min-width:60px;padding:10px 6px;border:none;background:transparent;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--ink-muted);white-space:nowrap">Panitia</button>
+    <button class="dp-tab"    id="dptab-unassigned" onclick="setDataTab('unassigned')" style="flex:1;min-width:60px;padding:10px 6px;border:none;background:transparent;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--ink-muted);white-space:nowrap">Belum</button>
+    <button class="dp-tab"    id="dptab-kavling"    onclick="setDataTab('kavling')"    style="flex:1;min-width:60px;padding:10px 6px;border:none;background:transparent;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--ink-muted);white-space:nowrap">Kavling</button>
   </div>
   <!-- Search -->
-  <div style="padding:10px 16px;flex-shrink:0;border-bottom:1px solid var(--hairline)">
-    <input id="dp-search" type="text" placeholder="Cari nama..." oninput="renderDataList()" style="width:100%;padding:8px 12px;border:1px solid var(--hairline);border-radius:8px;font-size:13px;background:var(--surface-1);color:var(--ink);box-sizing:border-box">
+  <div id="dp-search-wrap" style="padding:10px 16px;flex-shrink:0;border-bottom:1px solid var(--hairline)">
+    <input id="dp-search" type="text" placeholder="Cari nama..." oninput="dataTab==='kavling'?renderKavlingList():renderDataList()" style="width:100%;padding:8px 12px;border:1px solid var(--hairline);border-radius:8px;font-size:13px;background:var(--surface-1);color:var(--ink);box-sizing:border-box">
   </div>
   <!-- List -->
   <div id="dp-list" style="flex:1;overflow-y:auto;padding:8px 16px 80px"></div>
@@ -2324,7 +2325,7 @@ async function onMapClick(e) {
   if (!addMode) return;
   const n  = tents.filter(t=>t.type==='peserta').length + 1;
   const id = `T-${pad(n)}`;
-  const nt = mkTent(id, e.latlng.lat, e.latlng.lng, 4, '3×3m', 'peserta');
+  const nt = mkTent(id, e.latlng.lat, e.latlng.lng, 4, '4×4m', 'peserta');
   tents.push(nt); drawTent(nt); updateStats();
   if (checkCollision(nt.id)) {
     tents.pop(); renderAllTents(); updateStats();
@@ -2994,7 +2995,10 @@ function setDataTab(tab) {
   dataTab = tab;
   document.querySelectorAll('.dp-tab').forEach(b => b.classList.remove('on'));
   document.getElementById('dptab-' + tab).classList.add('on');
-  renderDataList();
+  const srch = document.getElementById('dp-search');
+  if (srch) srch.placeholder = tab === 'kavling' ? 'Cari kavling...' : 'Cari nama...';
+  if (tab === 'kavling') renderKavlingList();
+  else renderDataList();
 }
 
 function renderDataStats() {
@@ -3131,6 +3135,130 @@ function zoomToTent(tentId) {
   const t = tents.find(x => x.id === tentId); if (!t) return;
   closeDataPage();
   setTimeout(() => map.setView([t.lat, t.lon], 20, { animate: true }), 100);
+}
+
+function renderKavlingList() {
+  const q = (document.getElementById('dp-search').value || '').toLowerCase();
+  const el = document.getElementById('dp-list'); if (!el) return;
+
+  let list = tents.slice().sort((a,b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+  if (q) list = list.filter(t => t.id.toLowerCase().includes(q) || (t.family||'').toLowerCase().includes(q));
+
+  const total = tents.length;
+  const occupied = tents.filter(t => t.status === 'occupied').length;
+  const panitia = tents.filter(t => t.type === 'panitia').length;
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px">
+      <div style="background:var(--canvas);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:18px;font-weight:700">${total}</div>
+        <div style="font-size:10px;color:var(--ink-muted)">TOTAL</div>
+      </div>
+      <div style="background:var(--canvas);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:18px;font-weight:700;color:var(--green)">${occupied}</div>
+        <div style="font-size:10px;color:var(--ink-muted)">TERISI</div>
+      </div>
+      <div style="background:var(--canvas);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:18px;font-weight:700;color:var(--orange)">${total - occupied - panitia}</div>
+        <div style="font-size:10px;color:var(--ink-muted)">KOSONG</div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <button onclick="resetAllTents()" style="font-size:11px;padding:5px 10px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:6px;cursor:pointer;color:var(--red,#ef4444);font-weight:600">Reset Semua Kavling</button>
+    </div>
+    ${list.map(t => {
+      const isExp = dpExpanded.has('tent-' + t.id);
+      const statusColor = t.status === 'occupied' ? 'var(--green)' : t.type === 'panitia' ? 'var(--blue)' : 'var(--ink-muted)';
+      const statusLabel = t.status === 'occupied' ? 'Terisi' : t.type === 'panitia' ? 'Panitia' : 'Kosong';
+      const detail = isExp ? `
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--hairline)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+            <div style="background:var(--canvas);border-radius:8px;padding:8px">
+              <div style="font-size:10px;color:var(--ink-muted);margin-bottom:2px">UKURAN</div>
+              <input value="${t.size||'4×4m'}" onchange="updateTentSize('${t.id}',this.value)" style="font-size:13px;font-weight:700;width:100%;border:none;background:transparent;color:var(--ink);padding:0">
+            </div>
+            <div style="background:var(--canvas);border-radius:8px;padding:8px">
+              <div style="font-size:10px;color:var(--ink-muted);margin-bottom:2px">TIPE</div>
+              <select onchange="updateTentType('${t.id}',this.value)" style="font-size:12px;font-weight:600;border:none;background:transparent;color:var(--ink);padding:0;width:100%">
+                <option value="peserta" ${t.type==='peserta'?'selected':''}>Peserta</option>
+                <option value="panitia" ${t.type==='panitia'?'selected':''}>Panitia</option>
+              </select>
+            </div>
+          </div>
+          ${t.status === 'occupied' ? `
+            <div style="margin-bottom:10px;background:var(--canvas);border-radius:8px;padding:8px">
+              <div style="font-size:10px;color:var(--ink-muted);margin-bottom:2px">DITEMPATI</div>
+              <div style="font-size:13px;font-weight:600">${t.family||'—'}</div>
+              <div style="font-size:11px;color:var(--ink-muted)">${t.members||0} anggota</div>
+            </div>` : ''}
+          <div style="display:flex;gap:6px">
+            <button onclick="event.stopPropagation();zoomToTent('${t.id}')" style="flex:1;padding:7px;border:1px solid var(--primary);background:transparent;border-radius:8px;cursor:pointer;color:var(--primary);font-size:12px">Lihat Peta</button>
+            <button onclick="event.stopPropagation();resetTent('${t.id}')" style="flex:1;padding:7px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:8px;cursor:pointer;color:var(--red,#ef4444);font-size:12px;font-weight:600">Reset Kavling</button>
+          </div>
+        </div>` : '';
+      return `<div onclick="toggleTentExpand('${t.id}')" style="background:var(--surface-1);border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:3px solid ${statusColor};cursor:pointer">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+              <span style="font-size:13px;font-weight:700;font-family:monospace">${t.id}</span>
+              <span style="font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;background:${statusColor};color:#fff">${statusLabel}</span>
+              <span style="font-size:10px;color:var(--ink-muted)">${t.size||'4×4m'}</span>
+            </div>
+            ${t.family ? `<div style="font-size:13px;font-weight:500">${t.family}</div>` : `<div style="font-size:12px;color:var(--ink-muted)">Belum ada penghuni</div>`}
+          </div>
+          <span style="color:var(--ink-muted);font-size:16px;transition:transform .2s;transform:rotate(${isExp?'90':'0'}deg)">›</span>
+        </div>
+        ${detail}
+      </div>`;
+    }).join('')}
+  `;
+}
+
+function toggleTentExpand(id) {
+  const key = 'tent-' + id;
+  if (dpExpanded.has(key)) dpExpanded.delete(key);
+  else dpExpanded.add(key);
+  renderKavlingList();
+}
+
+async function updateTentSize(id, val) {
+  const t = tents.find(x => x.id === id); if (!t) return;
+  t.size = val.replace('x','×').replace(/([0-9])m?$/,'$1m');
+  await dbUpsertTent(t); renderAllTents();
+  toast(`Ukuran ${id} → ${t.size}`);
+}
+
+async function updateTentType(id, val) {
+  const t = tents.find(x => x.id === id); if (!t) return;
+  t.type = val;
+  await dbUpsertTent(t); renderAllTents(); renderKavlingList();
+  toast(`Tipe ${id} → ${val}`);
+}
+
+async function resetTent(id) {
+  const t = tents.find(x => x.id === id); if (!t) return;
+  if (!confirm(`Reset kavling ${id}?\nStatus, penghuni, dan tautan peserta akan dihapus. Posisi tidak berubah.`)) return;
+  // Lepas tautan peserta
+  const p = allParticipants.find(x => x.claimed_tent_id === id);
+  if (p) {
+    p.claimed_tent_id = null;
+    await sb.from('participants').update({ claimed_tent_id: null }).eq('id', p.id);
+  }
+  t.status = 'available'; t.family = ''; t.members = 0; t.member_names = [];
+  await dbUpsertTent(t); renderAllTents(); updateStats();
+  toast(`Kavling ${id} direset`);
+  renderKavlingList();
+}
+
+async function resetAllTents() {
+  if (!confirm(`Reset SEMUA kavling?\nSeluruh status, penghuni, dan tautan peserta akan dihapus. Posisi tidak berubah.`)) return;
+  // Lepas semua tautan peserta
+  await sb.from('participants').update({ claimed_tent_id: null }).neq('id', 0);
+  allParticipants.forEach(p => { p.claimed_tent_id = null; });
+  tents.forEach(t => { t.status = 'available'; t.family = ''; t.members = 0; t.member_names = []; });
+  await dbUpsertTents(tents); renderAllTents(); updateStats();
+  toast('Semua kavling direset');
+  renderKavlingList(); renderDataStats();
 }
 
 function toggleDpExpand(id) {
