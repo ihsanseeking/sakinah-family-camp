@@ -495,20 +495,17 @@
     <div class="sb-section">
       <div class="sb-title" onclick="toggleLayerList()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none">
         Layer Peta
-        <span id="layer-list-chevron" style="font-size:10px;transition:transform .2s">▼</span>
+        <span id="layer-list-chevron" style="font-size:10px;transition:transform .2s;transform:rotate(-90deg)">▼</span>
       </div>
-      <div id="layer-list"></div>
+      <div id="layer-list" style="display:none"></div>
     </div>
 
     <div class="sb-section">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div class="sb-title" onclick="toggleOvList()" style="cursor:pointer;display:flex;align-items:center;gap:6px;flex:1;user-select:none;margin:0">
+      <div class="sb-title" onclick="toggleOvList()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none">
           Overlay Gambar
-          <span id="overlay-list-chevron" style="font-size:10px;transition:transform .2s">▼</span>
-        </div>
-        <button onclick="openOverlayModal()" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--primary);background:var(--primary);color:#fff;cursor:pointer;font-weight:600">+ Tambah</button>
+          <span id="overlay-list-chevron" style="font-size:10px;transition:transform .2s;transform:rotate(-90deg)">▼</span>
       </div>
-      <div id="overlay-list"></div>
+      <div id="overlay-list" style="display:none"></div>
       <button id="btn-align-rot" onclick="alignRotationCenters()" style="width:100%;padding:8px 12px;margin-top:8px;border-radius:6px;border:1px solid var(--hairline);background:var(--surface-1);color:var(--ink);cursor:pointer;font-size:12px;font-weight:500;display:none">⚙️ Samakan Titik Putar</button>
     </div>
 
@@ -521,6 +518,7 @@
         <button class="draw-tool-btn" onclick="addSymbolMode('text')" title="Tambah Label Teks"><i data-lucide="type" class="lucide" style="width:16px;height:16px"></i></button>
         <button class="draw-tool-btn" onclick="addSymbolMode('arrow')" title="Tambah Panah"><i data-lucide="move-up-right" class="lucide" style="width:16px;height:16px"></i></button>
         <button class="draw-tool-btn" onclick="addSymbolMode('circle')" title="Tambah Lingkaran"><i data-lucide="circle" class="lucide" style="width:16px;height:16px"></i></button>
+        <button class="draw-tool-btn" onclick="openOverlayModal()" title="Tambah Overlay Gambar"><i data-lucide="image-plus" class="lucide" style="width:16px;height:16px"></i></button>
       </div>
       <button class="tool-btn" id="btn-add" onclick="toggleAddMode()" style="justify-content:center"><i data-lucide="tent" class="lucide"></i>Tambah Kavling</button>
     </div>
@@ -2278,8 +2276,8 @@ async function onMapClick(e) {
 }
 
 let expandedLayerIds = new Set();
-let layerListCollapsed = false;
-let ovListCollapsed = false;
+let layerListCollapsed = true;
+let ovListCollapsed = true;
 
 function toggleLayerList() {
   layerListCollapsed = !layerListCollapsed;
@@ -2296,18 +2294,6 @@ function toggleOvList() {
   if (ch) ch.style.transform = ovListCollapsed ? 'rotate(-90deg)' : '';
 }
 
-let activeSymbolMode = null;
-function addSymbolMode(type) {
-  if (activeSymbolMode === type) {
-    activeSymbolMode = null;
-    map.getContainer().style.cursor = '';
-    toast('Mode symbol dimatikan');
-    return;
-  }
-  activeSymbolMode = type;
-  map.getContainer().style.cursor = 'crosshair';
-  toast(`Klik di peta untuk menambah ${type}`);
-}
 
 function toggleLayerExpand(id) {
   if (expandedLayerIds.has(id)) expandedLayerIds.delete(id); else expandedLayerIds.add(id);
