@@ -970,7 +970,7 @@ async function dbLoadMapLayers() {
 async function dbUpsertMapLayer(l) {
   const { error } = await sb.from('map_layers').upsert({
     id: l.id, type: l.type, name: l.name, color: l.color, coords: l.coords,
-    visible: l.visible, group_name: l.group_name || null, updated_at: new Date().toISOString()
+    visible: l.visible, group_name: l.group_name || null, category: l.category || 'area', updated_at: new Date().toISOString()
   }, { onConflict: 'id' });
   if (error) console.error('dbUpsertMapLayer:', error);
 }
@@ -2119,13 +2119,30 @@ function metersBetween(a, b) {
   return Math.hypot((a[0]-b[0])*LAT_M, (a[1]-b[1])*LON_M);
 }
 
+// Style per kategori semantik
+const CATEGORY_STYLES = {
+  area:     { fillOpacity: 0.12, weight: 2, dashArray: '4,4' },
+  bangunan: { fillOpacity: 0.35, weight: 2, dashArray: null  },
+  jalur:    { fillOpacity: 0,    weight: 3, dashArray: '8,6' },
+};
+const CATEGORY_LABELS = { area: 'Area', bangunan: 'Bangunan', jalur: 'Jalur' };
+const CATEGORY_ICONS  = { area: '🌿', bangunan: '🏠', jalur: '〰️' };
+
 // Buat/refresh Leaflet layer untuk satu entri mapLayers (mutasi l.layer)
 function renderMapLayerShape(l) {
   if (l.layer) map.removeLayer(l.layer);
+  const cat = l.category || (l.type === 'path' ? 'jalur' : 'area');
+  const s = CATEGORY_STYLES[cat] || CATEGORY_STYLES.area;
   if (l.type === 'area') {
-    l.layer = L.polygon(l.coords, { color:l.color, weight:2, fillColor:l.color, fillOpacity:.12, dashArray:'4,4' });
+    l.layer = L.polygon(l.coords, {
+      color: l.color, weight: s.weight, fillColor: l.color,
+      fillOpacity: s.fillOpacity, ...(s.dashArray ? { dashArray: s.dashArray } : {})
+    });
   } else {
-    l.layer = L.polyline(l.coords, { color:l.color || PATH_COLOR, weight:3, dashArray:'8,6', opacity:.8 });
+    l.layer = L.polyline(l.coords, {
+      color: l.color || PATH_COLOR, weight: s.weight,
+      dashArray: s.dashArray || undefined, opacity: .85
+    });
   }
   l.layer.bindTooltip(l.name, { sticky:true });
   if (l.visible) l.layer.addTo(map);
@@ -2146,12 +2163,14 @@ function removeMapLayerLocal(id) {
   renderLayerList();
 }
 
-async function commitNewMapLayer(type, coordsLatLng, defaultName) {
+async function commitNewMapLayer(type, coordsLatLng, defaultName, category) {
+  const cat = category || (type === 'path' ? 'jalur' : 'area');
   const color = AREA_COLORS[mapLayers.filter(l=>l.type==='area').length % AREA_COLORS.length];
   const l = {
     id: type + '_' + Date.now(), type, name: defaultName,
     color: type === 'area' ? color : PATH_COLOR,
-    coords: coordsLatLng, visible: true, layer: null
+    coords: coordsLatLng, visible: true, layer: null,
+    category: cat, group_name: null
   };
   renderMapLayerShape(l);
   mapLayers.push(l);
@@ -2184,11 +2203,32 @@ function stopDrawingArea() {
 async function onAreaCreated(e) {
   stopDrawingArea();
   const coords = e.layer.getLatLngs()[0].map(ll => [ll.lat, ll.lng]);
-  const name = 'Area ' + (mapLayers.filter(l=>l.type==='area').length + 1);
-  const l = await commitNewMapLayer('area', coords, name);
-  toast('Area "' + name + '" ditambahkan.');
-  const newName = prompt('Nama area:', name);
+  // Tanya kategori: Area atau Bangunan
+  const catChoice = await pickLayerCategory();
+  const countArea = mapLayers.filter(l=>l.type==='area').length + 1;
+  const defaultName = (CATEGORY_LABELS[catChoice] || 'Area') + ' ' + countArea;
+  const l = await commitNewMapLayer('area', coords, defaultName, catChoice);
+  toast(`${CATEGORY_ICONS[catChoice]} "${defaultName}" ditambahkan.`);
+  const newName = prompt('Nama layer:', defaultName);
   if (newName && newName.trim()) { l.name = newName.trim(); l.layer.setTooltipContent(l.name); await dbUpsertMapLayer(l); renderLayerList(); }
+}
+
+function pickLayerCategory() {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center';
+    overlay.innerHTML = `
+      <div style="background:var(--canvas);border-radius:16px;padding:20px;width:280px;text-align:center">
+        <div style="font-size:15px;font-weight:700;margin-bottom:6px">Kategori Layer</div>
+        <div style="font-size:12px;color:var(--ink-muted);margin-bottom:16px">Pilih jenis layer yang digambar</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button onclick="this.closest('div[style*=fixed]')._resolve('area')" style="padding:12px;border:1px solid var(--hairline);border-radius:10px;background:var(--surface-1);cursor:pointer;font-size:13px;font-weight:600;text-align:left">🌿 <strong>Area</strong> — taman, lapangan, hutan</button>
+          <button onclick="this.closest('div[style*=fixed]')._resolve('bangunan')" style="padding:12px;border:1px solid var(--hairline);border-radius:10px;background:var(--surface-1);cursor:pointer;font-size:13px;font-weight:600;text-align:left">🏠 <strong>Bangunan</strong> — gedung, wisma, aula</button>
+        </div>
+      </div>`;
+    overlay._resolve = (val) => { document.body.removeChild(overlay); resolve(val); };
+    document.body.appendChild(overlay);
+  });
 }
 
 function toggleDrawPath() {
@@ -2372,17 +2412,22 @@ function renderLayerList() {
   const el = document.getElementById('layer-list'); if (!el) return;
   if (!mapLayers.length) { el.innerHTML = ''; return; }
 
-  // Group layers
-  const grouped = {};
-  [...mapLayers]
-    .sort((a, b) => (b.visible ? 1 : 0) - (a.visible ? 1 : 0))
-    .forEach(l => {
-      const g = l.group_name || '—';
-      if (!grouped[g]) grouped[g] = [];
-      grouped[g].push(l);
-    });
+  // Group by category → group_name
+  const CAT_ORDER = ['bangunan','area','jalur'];
+  const byCategory = {};
+  [...mapLayers].forEach(l => {
+    const cat = l.category || (l.type === 'path' ? 'jalur' : 'area');
+    if (!byCategory[cat]) byCategory[cat] = {};
+    const grp = l.group_name || '—';
+    if (!byCategory[cat][grp]) byCategory[cat][grp] = [];
+    byCategory[cat][grp].push(l);
+  });
 
-  const renderItem = l => `
+  const catColors = { area:'#22c55e', bangunan:'#3b82f6', jalur:'#f59e0b' };
+
+  const renderItem = l => {
+    const cat = l.category || (l.type === 'path' ? 'jalur' : 'area');
+    return `
     <div>
       <div class="layer-item" onclick="toggleLayerExpand('${l.id}')">
         <div class="layer-dot" style="background:${l.color};cursor:pointer" onclick="event.stopPropagation();pickLayerColor('${l.id}')" title="Ganti warna"></div>
@@ -2393,23 +2438,46 @@ function renderLayerList() {
       <div style="display:flex;gap:4px;padding:2px 8px 6px 22px;flex-wrap:wrap">
         <button class="lbtn" style="width:auto;padding:3px 8px;font-size:11px;gap:4px" onclick="renameMapLayer('${l.id}')"><i data-lucide="pencil" class="lucide" style="width:12px;height:12px"></i> Nama</button>
         <button class="lbtn" style="width:auto;padding:3px 8px;font-size:11px;gap:4px" onclick="setLayerGroup('${l.id}')"><i data-lucide="folder" class="lucide" style="width:12px;height:12px"></i> Grup</button>
+        <button class="lbtn" style="width:auto;padding:3px 8px;font-size:11px;gap:4px" onclick="cycleLayerCategory('${l.id}')" title="Ganti kategori: ${cat}"><i data-lucide="tag" class="lucide" style="width:12px;height:12px"></i> ${CATEGORY_ICONS[cat]} ${CATEGORY_LABELS[cat]}</button>
         <button class="lbtn" style="width:auto;padding:3px 8px;font-size:11px;gap:4px;color:var(--red)" onclick="deleteMapLayer('${l.id}')"><i data-lucide="trash-2" class="lucide" style="width:12px;height:12px"></i> Hapus</button>
       </div>` : ''}
     </div>`;
+  };
 
-  el.innerHTML = Object.entries(grouped).map(([grp, layers]) => {
-    const isCollapsed = collapsedGroups.has(grp);
+  const renderGroup = (grp, layers, cat) => {
+    const key = cat + '::' + grp;
+    const isCollapsed = collapsedGroups.has(key);
     const allVisible = layers.every(l => l.visible);
     const anyVisible = layers.some(l => l.visible);
     return `
-    <div style="margin-bottom:4px">
-      <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:6px;background:var(--surface-1);margin-bottom:2px">
-        <span onclick="toggleGroupCollapse('${grp}')" style="font-size:9px;transition:transform .2s;display:inline-block;transform:rotate(${isCollapsed?'-90':'0'}deg);cursor:pointer;padding:2px">▼</span>
-        <span onclick="toggleGroupCollapse('${grp}')" style="font-size:11px;font-weight:600;color:var(--ink-muted);flex:1;cursor:pointer">${grp}</span>
+    <div style="margin-bottom:2px">
+      <div style="display:flex;align-items:center;gap:5px;padding:3px 6px;border-radius:6px;background:var(--surface-1);margin-bottom:1px">
+        <span onclick="toggleGroupCollapse('${key}')" style="font-size:9px;transition:transform .2s;display:inline-block;transform:rotate(${isCollapsed?'-90':'0'}deg);cursor:pointer;padding:2px">▼</span>
+        <span onclick="toggleGroupCollapse('${key}')" style="font-size:11px;font-weight:600;color:var(--ink-muted);flex:1;cursor:pointer">${grp}</span>
         <span style="font-size:10px;color:var(--ink-muted)">${layers.length}</span>
-        <button class="lbtn ${anyVisible?'active':''}" onclick="toggleGroupVis('${grp}',${allVisible})" title="${allVisible?'Sembunyikan grup':'Tampilkan grup'}"><i data-lucide="eye${allVisible?'':'-off'}" class="lucide" style="width:13px;height:13px"></i></button>
+        <button class="lbtn ${anyVisible?'active':''}" onclick="toggleGroupVis('${key}',${allVisible},'${cat}','${grp}')" title="${allVisible?'Sembunyikan':'Tampilkan'}"><i data-lucide="eye${allVisible?'':'-off'}" class="lucide" style="width:13px;height:13px"></i></button>
       </div>
       ${isCollapsed ? '' : layers.map(renderItem).join('')}
+    </div>`;
+  };
+
+  el.innerHTML = CAT_ORDER.filter(cat => byCategory[cat]).map(cat => {
+    const groups = byCategory[cat];
+    const catKey = 'cat::' + cat;
+    const isCatCollapsed = collapsedGroups.has(catKey);
+    const allLayers = Object.values(groups).flat();
+    const allVisible = allLayers.every(l => l.visible);
+    const anyVisible = allLayers.some(l => l.visible);
+    return `
+    <div style="margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:8px;background:${catColors[cat]}18;border-left:3px solid ${catColors[cat]};margin-bottom:3px;cursor:pointer" onclick="toggleGroupCollapse('${catKey}')">
+        <span style="font-size:13px">${CATEGORY_ICONS[cat]}</span>
+        <span style="font-size:12px;font-weight:700;color:var(--ink);flex:1">${CATEGORY_LABELS[cat]}</span>
+        <span style="font-size:10px;color:var(--ink-muted)">${allLayers.length}</span>
+        <button class="lbtn ${anyVisible?'active':''}" onclick="event.stopPropagation();toggleCategoryVis('${cat}',${allVisible})" title="${allVisible?'Sembunyikan':'Tampilkan'} semua"><i data-lucide="eye${allVisible?'':'-off'}" class="lucide" style="width:13px;height:13px"></i></button>
+        <span style="font-size:9px;color:var(--ink-muted);transform:rotate(${isCatCollapsed?'-90':'0'}deg);transition:transform .2s">▼</span>
+      </div>
+      ${isCatCollapsed ? '' : Object.entries(groups).map(([grp, layers]) => renderGroup(grp, layers, cat)).join('')}
     </div>`;
   }).join('');
   lucide.createIcons();
@@ -2420,14 +2488,38 @@ function toggleGroupCollapse(grp) {
   renderLayerList();
 }
 
-function toggleGroupVis(grp, allVisible) {
-  const layers = mapLayers.filter(l => (l.group_name || '—') === grp);
+function toggleGroupVis(key, allVisible, cat, grp) {
+  const layers = mapLayers.filter(l => {
+    const lcat = l.category || (l.type === 'path' ? 'jalur' : 'area');
+    return lcat === cat && (l.group_name || '—') === grp;
+  });
   layers.forEach(l => {
     l.visible = !allVisible;
     l.visible ? l.layer.addTo(map) : map.removeLayer(l.layer);
     dbUpsertMapLayer(l);
   });
   renderLayerList();
+}
+
+function toggleCategoryVis(cat, allVisible) {
+  const layers = mapLayers.filter(l => (l.category || (l.type === 'path' ? 'jalur' : 'area')) === cat);
+  layers.forEach(l => {
+    l.visible = !allVisible;
+    l.visible ? l.layer.addTo(map) : map.removeLayer(l.layer);
+    dbUpsertMapLayer(l);
+  });
+  renderLayerList();
+}
+
+async function cycleLayerCategory(id) {
+  const l = mapLayers.find(x => x.id === id); if (!l) return;
+  const cats = ['area', 'bangunan', 'jalur'].filter(c => l.type === 'path' ? c === 'jalur' : c !== 'jalur');
+  const cur = cats.indexOf(l.category || 'area');
+  l.category = cats[(cur + 1) % cats.length];
+  renderMapLayerShape(l);
+  await dbUpsertMapLayer(l);
+  renderLayerList();
+  toast(`${CATEGORY_ICONS[l.category]} "${l.name}" → ${CATEGORY_LABELS[l.category]}`);
 }
 
 function pickLayerColor(id) {
