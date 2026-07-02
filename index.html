@@ -554,7 +554,8 @@
 
     <div class="map-legend">
       <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>Tersedia</div>
-      <div class="leg-item"><div class="leg-dot" style="background:var(--orange)"></div>Terisi</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#f59e0b"></div>Sewa</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#8b5cf6"></div>Sendiri</div>
       <div class="leg-item"><div class="leg-dot" style="background:var(--blue)"></div>Panitia</div>
     </div>
 
@@ -1385,7 +1386,11 @@ function renderAllTents() {
 
 function tentColor(t) {
   if (t.type === 'panitia') return { fill:'#3b82f6', stroke:'#2563eb' };
-  if (t.status === 'occupied')  return { fill:'#f59e0b', stroke:'#d97706' };
+  if (t.status === 'occupied') {
+    return t.ownership === 'sendiri'
+      ? { fill:'#8b5cf6', stroke:'#7c3aed' }  // ungu = bawa sendiri
+      : { fill:'#f59e0b', stroke:'#d97706' };  // kuning = sewa
+  }
   return { fill:'#22c55e', stroke:'#16a34a' };
 }
 
