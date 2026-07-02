@@ -384,6 +384,11 @@
       #hdr-menu-btn { display:none !important; }
     }
 
+    /* ── Data Page Tabs ── */
+    .dp-tab { transition:color .15s,border-color .15s; }
+    .dp-tab.on { color:var(--primary) !important; border-bottom-color:var(--primary) !important; }
+    #m-data { display:none; }
+    #m-data.show { display:flex; }
     /* ── Misc ── */
     .mt8 { margin-top:8px; }
     .mt12 { margin-top:12px; }
@@ -521,7 +526,8 @@
       <div id="layer-list" style="display:none"></div>
     </div>
 
-    <div class="sb-section" style="margin-top:auto;border-bottom:none">
+    <div class="sb-section" style="margin-top:auto;border-bottom:none;display:flex;flex-direction:column;gap:6px">
+      <button class="tool-btn" onclick="openDataPage()" style="justify-content:center;font-weight:600;background:var(--surface-2)"><i data-lucide="users" class="lucide"></i>Data Peserta & Panitia</button>
       <button class="tool-btn" onclick="openOv('m-settings')" style="justify-content:center;font-weight:600"><i data-lucide="settings" class="lucide"></i>Pengaturan Admin</button>
     </div>
 
@@ -761,6 +767,31 @@
   </div>
 </div>
 
+<!-- ── Data Peserta Page ── -->
+<div id="m-data" style="position:fixed;inset:0;z-index:2000;background:var(--canvas);flex-direction:column;overflow:hidden">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--hairline);flex-shrink:0;background:var(--canvas)">
+    <button onclick="closeDataPage()" style="border:none;background:transparent;cursor:pointer;color:var(--ink-muted);padding:4px;border-radius:8px;display:flex"><i data-lucide="arrow-left" class="lucide" style="width:22px;height:22px"></i></button>
+    <span style="font-size:16px;font-weight:700;flex:1">Data Peserta & Panitia</span>
+    <button onclick="openOv('m-csv')" style="border:none;background:var(--primary);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px"><i data-lucide="upload" class="lucide" style="width:14px;height:14px"></i> Import</button>
+  </div>
+  <!-- Stats -->
+  <div id="dp-stats" style="display:flex;gap:8px;padding:12px 16px;flex-shrink:0;background:var(--surface-1);border-bottom:1px solid var(--hairline)"></div>
+  <!-- Tabs -->
+  <div style="display:flex;border-bottom:1px solid var(--hairline);flex-shrink:0;background:var(--canvas)">
+    <button class="dp-tab on" id="dptab-all"    onclick="setDataTab('all')"    style="flex:1;padding:10px;border:none;background:transparent;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--ink-muted)">Semua</button>
+    <button class="dp-tab"    id="dptab-peserta" onclick="setDataTab('peserta')" style="flex:1;padding:10px;border:none;background:transparent;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--ink-muted)">Peserta</button>
+    <button class="dp-tab"    id="dptab-panitia" onclick="setDataTab('panitia')" style="flex:1;padding:10px;border:none;background:transparent;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--ink-muted)">Panitia</button>
+    <button class="dp-tab"    id="dptab-unassigned" onclick="setDataTab('unassigned')" style="flex:1;padding:10px;border:none;background:transparent;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--ink-muted)">Belum</button>
+  </div>
+  <!-- Search -->
+  <div style="padding:10px 16px;flex-shrink:0;border-bottom:1px solid var(--hairline)">
+    <input id="dp-search" type="text" placeholder="Cari nama..." oninput="renderDataList()" style="width:100%;padding:8px 12px;border:1px solid var(--hairline);border-radius:8px;font-size:13px;background:var(--surface-1);color:var(--ink);box-sizing:border-box">
+  </div>
+  <!-- List -->
+  <div id="dp-list" style="flex:1;overflow-y:auto;padding:8px 16px 80px"></div>
+</div>
+
 <!-- ── Image Overlay Modal ── -->
 <div class="ov" id="m-overlay">
   <div class="modal">
@@ -914,6 +945,12 @@ async function dbUpsertEvent(ev) {
   const { error } = await sb.from('events').upsert({ ...ev, updated_at: new Date().toISOString() }, { onConflict: 'id' });
   if (error) console.error('dbUpsertEvent:', error);
 }
+async function dbLoadAllParticipants() {
+  const { data, error } = await sb.from('participants').select('*').order('code');
+  if (error) { console.error('dbLoadAllParticipants:', error); return []; }
+  return data || [];
+}
+
 async function dbFindParticipant(code) {
   const { data, error } = await sb.from('participants').select('*').eq('code', code).maybeSingle();
   return error ? null : data;
@@ -2815,6 +2852,136 @@ function cancelLogin() {
 
 // ── Participant Login ──
 let participantData = null;
+
+// ══════════════════════════════════════════════
+//   DATA PESERTA PAGE
+// ══════════════════════════════════════════════
+let allParticipants = [];
+let dataTab = 'all';
+
+async function openDataPage() {
+  const el = document.getElementById('m-data');
+  el.classList.add('show');
+  document.getElementById('dp-search').value = '';
+  allParticipants = await dbLoadAllParticipants();
+  renderDataStats();
+  renderDataList();
+  lucide.createIcons();
+}
+
+function closeDataPage() {
+  document.getElementById('m-data').classList.remove('show');
+}
+
+function setDataTab(tab) {
+  dataTab = tab;
+  document.querySelectorAll('.dp-tab').forEach(b => b.classList.remove('on'));
+  document.getElementById('dptab-' + tab).classList.add('on');
+  renderDataList();
+}
+
+function renderDataStats() {
+  const total = allParticipants.length;
+  const peserta = allParticipants.filter(p => p.code.startsWith('SFC3-P') || !p.code.startsWith('SFC3-A')).length;
+  const claimed = allParticipants.filter(p => p.claimed_tent_id).length;
+  const panitia = allParticipants.filter(p => p.code.startsWith('SFC3-A')).length;
+  document.getElementById('dp-stats').innerHTML = `
+    <div style="flex:1;text-align:center;padding:8px;background:var(--canvas);border-radius:8px">
+      <div style="font-size:20px;font-weight:700">${total}</div>
+      <div style="font-size:10px;color:var(--ink-muted)">TOTAL</div>
+    </div>
+    <div style="flex:1;text-align:center;padding:8px;background:var(--canvas);border-radius:8px">
+      <div style="font-size:20px;font-weight:700;color:var(--primary)">${claimed}</div>
+      <div style="font-size:10px;color:var(--ink-muted)">SUDAH PILIH</div>
+    </div>
+    <div style="flex:1;text-align:center;padding:8px;background:var(--canvas);border-radius:8px">
+      <div style="font-size:20px;font-weight:700;color:var(--orange)">${total - claimed}</div>
+      <div style="font-size:10px;color:var(--ink-muted)">BELUM PILIH</div>
+    </div>
+    <div style="flex:1;text-align:center;padding:8px;background:var(--canvas);border-radius:8px">
+      <div style="font-size:20px;font-weight:700;color:var(--blue)">${panitia}</div>
+      <div style="font-size:10px;color:var(--ink-muted)">PANITIA</div>
+    </div>`;
+}
+
+function renderDataList() {
+  const q = (document.getElementById('dp-search').value || '').toLowerCase();
+  let list = allParticipants;
+  if (dataTab === 'peserta')    list = list.filter(p => !p.code.startsWith('SFC3-A'));
+  if (dataTab === 'panitia')    list = list.filter(p => p.code.startsWith('SFC3-A'));
+  if (dataTab === 'unassigned') list = list.filter(p => !p.claimed_tent_id);
+  if (q) list = list.filter(p => p.family_name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q));
+
+  const el = document.getElementById('dp-list'); if (!el) return;
+  if (!list.length) { el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--ink-muted)">Tidak ada data</div>'; return; }
+
+  el.innerHTML = list.map(p => {
+    const tent = p.claimed_tent_id ? tents.find(t => t.id === p.claimed_tent_id) : null;
+    const tentLabel = tent ? tent.id : (p.claimed_tent_id || null);
+    const members = Array.isArray(p.member_names) && p.member_names.length ? p.member_names : [];
+    const memberCount = p.members || members.length || 0;
+    const availTents = tents.filter(t => t.status === 'available' && t.type === 'peserta').sort((a,b) => a.id.localeCompare(b.id));
+
+    return `<div style="background:var(--surface-1);border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:3px solid ${tentLabel ? 'var(--green)' : 'var(--hairline)'}">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+            <span style="font-size:11px;font-weight:700;color:var(--ink-muted);font-family:monospace">${p.code}</span>
+            ${tentLabel ? `<span style="font-size:10px;background:var(--green);color:#fff;padding:1px 6px;border-radius:10px;font-weight:600">${tentLabel}</span>` : `<span style="font-size:10px;background:var(--surface-2);color:var(--ink-muted);padding:1px 6px;border-radius:10px">Belum pilih</span>`}
+          </div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:2px">${p.family_name}</div>
+          ${memberCount ? `<div style="font-size:11px;color:var(--ink-muted)">${memberCount} anggota${members.length ? ': ' + members.slice(0,2).join(', ') + (members.length > 2 ? ` +${members.length-2}` : '') : ''}</div>` : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+          ${tentLabel
+            ? `<button onclick="adminUnassignTent('${p.id}','${p.claimed_tent_id}')" style="font-size:10px;padding:4px 8px;border:1px solid var(--hairline);background:transparent;border-radius:6px;cursor:pointer;color:var(--red)">Lepas</button>
+               <button onclick="zoomToTent('${p.claimed_tent_id}')" style="font-size:10px;padding:4px 8px;border:1px solid var(--primary);background:transparent;border-radius:6px;cursor:pointer;color:var(--primary)">Lihat Peta</button>`
+            : `<select onchange="adminAssignTent('${p.id}',this.value);this.value=''" style="font-size:11px;padding:4px 6px;border:1px solid var(--hairline);border-radius:6px;background:var(--canvas);color:var(--ink);cursor:pointer">
+                <option value="">Assign kavling…</option>
+                ${availTents.map(t => `<option value="${t.id}">${t.id} (${t.size})</option>`).join('')}
+               </select>`}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function adminAssignTent(participantId, tentId) {
+  if (!tentId) return;
+  const t = tents.find(x => x.id === tentId);
+  const p = allParticipants.find(x => x.id === participantId);
+  if (!t || !p) return;
+  if (t.status !== 'available') { toast('Kavling sudah terisi!', true); renderDataList(); return; }
+  t.status = 'occupied'; t.family = p.family_name;
+  t.members = p.members || (Array.isArray(p.member_names) ? p.member_names.length : 0);
+  t.member_names = p.member_names || [];
+  await dbUpsertTent(t);
+  await dbUpdateParticipant(participantId, { claimed_tent_id: tentId });
+  p.claimed_tent_id = tentId;
+  renderAllTents();
+  renderDataStats();
+  renderDataList();
+  toast(`${p.family_name} → ${tentId} ✅`);
+}
+
+async function adminUnassignTent(participantId, tentId) {
+  if (!confirm(`Lepas kavling ${tentId} dari peserta ini?`)) return;
+  const t = tents.find(x => x.id === tentId);
+  const p = allParticipants.find(x => x.id === participantId);
+  if (t) { t.status = 'available'; t.family = null; t.members = null; await dbUpsertTent(t); }
+  await dbUpdateParticipant(participantId, { claimed_tent_id: null });
+  if (p) p.claimed_tent_id = null;
+  renderAllTents();
+  renderDataStats();
+  renderDataList();
+  toast(`Kavling ${tentId} dilepas`);
+}
+
+function zoomToTent(tentId) {
+  const t = tents.find(x => x.id === tentId); if (!t) return;
+  closeDataPage();
+  setTimeout(() => map.setView([t.lat, t.lon], 20, { animate: true }), 100);
+}
 
 async function doPesertaLogin() {
   const code = document.getElementById('peserta-code').value.trim().toUpperCase();
