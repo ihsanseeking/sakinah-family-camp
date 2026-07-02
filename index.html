@@ -756,7 +756,7 @@
   <div class="modal">
     <button class="modal-close" onclick="closeOv('m-csv')">✕</button>
     <div class="modal-title"><i data-lucide="download" class="lucide" style="width:20px;height:20px"></i> Import Data Peserta</div>
-    <div class="muted" style="margin-bottom:14px">Format kolom CSV: <b>kavling_id, nama_keluarga, ukuran, anggota</b><br><span style="font-size:10px">Kolom anggota dipisah tanda | (pipa). Contoh: <code>T-01,Ahmad,4x4m,Siti|Budi|Ani</code></span></div>
+    <div class="muted" style="margin-bottom:14px">Format CSV peserta: <b>nama_keluarga, anggota, role</b><br><span style="font-size:10px">Kolom <code>role</code> opsional (isi <code>panitia</code> untuk panitia, kosong = peserta). Voucher dibuat otomatis.<br>Contoh: <code>Ahmad Fauzi,4</code> &nbsp;|&nbsp; <code>Riska Panitia,1,panitia</code></span></div>
     <div class="fg" style="border:2px dashed var(--hairline);border-radius:10px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById('csv-inp').click()">
       <div style="margin-bottom:6px"><i data-lucide="file-text" class="lucide" style="width:36px;height:36px;stroke-width:1.5"></i></div>
       <div style="font-size:13px;font-weight:600">Klik atau seret file CSV di sini</div>
@@ -2722,6 +2722,16 @@ function renderIncList() {
 function importCSV() { openOv('m-csv'); }
 
 let _csvParsed = [];
+const VOUCHER_ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L
+
+function generateVoucherCode(existingCodes) {
+  let code;
+  do {
+    code = Array.from({ length: 5 }, () => VOUCHER_ALPHA[Math.floor(Math.random() * VOUCHER_ALPHA.length)]).join('');
+  } while (existingCodes.has(code));
+  existingCodes.add(code);
+  return code;
+}
 
 function handleCSV(inp) {
   const file = inp.files[0];
@@ -2732,41 +2742,45 @@ function handleCSV(inp) {
     if (lines.length < 2) { toast('File kosong atau format salah', true); return; }
 
     const headerLine = lines[0].toLowerCase();
-    // Detect participant import: has 'code' or 'family_name' column
-    const isParticipantFmt = headerLine.includes('code') || headerLine.includes('family_name') || headerLine.includes('nama_keluarga');
+    // Participant format: has nama_keluarga/family_name/anggota but NOT kavling_id
+    const isParticipantFmt = !headerLine.includes('kavling_id') &&
+      (headerLine.includes('nama_keluarga') || headerLine.includes('family_name') || headerLine.includes('anggota'));
 
     if (isParticipantFmt) {
-      // Parse participant CSV: code, family_name/nama_keluarga, members/anggota
+      // Format: nama_keluarga, anggota, role(opsional) — voucher dibuat otomatis
       _csvParsed = [];
-      lines.slice(1).forEach((line, i) => {
+      const usedCodes = new Set(allParticipants.map(p => p.code));
+      lines.slice(1).forEach(line => {
         if (!line.trim()) return;
         const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-        const code = (cols[0] || '').toUpperCase();
-        const familyName = cols[1] || '';
-        const members = parseInt(cols[2]) || 1;
-        if (code && familyName) _csvParsed.push({ code, family_name: familyName, members });
+        const familyName = cols[0] || '';
+        const members = parseInt(cols[1]) || 1;
+        const role = (cols[2] || '').toLowerCase() === 'panitia' ? 'panitia' : 'peserta';
+        if (!familyName) return;
+        const code = generateVoucherCode(usedCodes);
+        _csvParsed.push({ code, family_name: familyName, members, role });
       });
 
       const prev = document.getElementById('csv-preview');
       if (!_csvParsed.length) { prev.innerHTML = '<div style="color:var(--danger);font-size:13px">Tidak ada data valid ditemukan.</div>'; return; }
 
       let rows = _csvParsed.slice(0, 5).map(p =>
-        `<tr><td style="padding:4px 8px">${p.code}</td><td style="padding:4px 8px">${p.family_name}</td><td style="padding:4px 8px;text-align:center">${p.members}</td></tr>`
+        `<tr><td style="padding:4px 8px;font-family:monospace;font-weight:700;letter-spacing:1px;color:var(--primary)">${p.code}</td><td style="padding:4px 8px">${p.family_name}</td><td style="padding:4px 8px;text-align:center">${p.members}</td></tr>`
       ).join('');
       const more = _csvParsed.length > 5 ? `<tr><td colspan="3" style="padding:4px 8px;color:var(--ink-muted);font-size:11px">...dan ${_csvParsed.length - 5} lainnya</td></tr>` : '';
 
       prev.innerHTML = `
-        <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--ink-muted)">${_csvParsed.length} peserta ditemukan — preview:</div>
-        <div style="overflow:auto;max-height:160px;border:1px solid var(--hairline);border-radius:8px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--ink-muted)">${_csvParsed.length} peserta — kode voucher dibuat otomatis:</div>
+        <div style="overflow:auto;max-height:150px;border:1px solid var(--hairline);border-radius:8px;margin-bottom:12px">
           <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <thead><tr style="background:var(--surface-1)"><th style="padding:4px 8px;text-align:left">Kode</th><th style="padding:4px 8px;text-align:left">Nama Keluarga</th><th style="padding:4px 8px">Anggota</th></tr></thead>
+            <thead><tr style="background:var(--surface-1)"><th style="padding:4px 8px;text-align:left">Voucher</th><th style="padding:4px 8px;text-align:left">Nama Keluarga</th><th style="padding:4px 8px">Anggota</th></tr></thead>
             <tbody>${rows}${more}</tbody>
           </table>
         </div>
         <button onclick="confirmCSVImport()" style="width:100%;padding:10px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Konfirmasi Import ${_csvParsed.length} Peserta</button>
       `;
     } else {
-      // Tent/kavling import (format lama: kavling_id, nama_keluarga, ukuran, anggota)
+      // Tent/kavling import: kavling_id, nama_keluarga, ukuran, anggota
       _csvParsed = [];
       lines.slice(1).forEach(line => {
         if (!line.trim()) return;
@@ -2785,7 +2799,7 @@ function handleCSV(inp) {
 
       prev.innerHTML = `
         <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--ink-muted)">${_csvParsed.length} kavling ditemukan — preview:</div>
-        <div style="overflow:auto;max-height:160px;border:1px solid var(--hairline);border-radius:8px;margin-bottom:12px">
+        <div style="overflow:auto;max-height:150px;border:1px solid var(--hairline);border-radius:8px;margin-bottom:12px">
           <table style="width:100%;border-collapse:collapse;font-size:12px">
             <thead><tr style="background:var(--surface-1)"><th style="padding:4px 8px;text-align:left">Kavling</th><th style="padding:4px 8px;text-align:left">Keluarga</th></tr></thead>
             <tbody>${rows}${more}</tbody>
@@ -2803,7 +2817,7 @@ async function confirmCSVImport() {
   const btn = document.querySelector('#csv-preview button');
   if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan...'; }
 
-  const rows = _csvParsed.map(p => ({ code: p.code, family_name: p.family_name, members: p.members }));
+  const rows = _csvParsed.map(p => ({ code: p.code, family_name: p.family_name, members: p.members, role: p.role || 'peserta' }));
   const { error } = await sb.from('participants').upsert(rows, { onConflict: 'code' });
 
   if (error) {
@@ -2968,9 +2982,9 @@ function setDataTab(tab) {
 
 function renderDataStats() {
   const total = allParticipants.length;
-  const peserta = allParticipants.filter(p => p.code.startsWith('SFC3-P') || !p.code.startsWith('SFC3-A')).length;
-  const claimed = allParticipants.filter(p => p.claimed_tent_id).length;
-  const panitia = allParticipants.filter(p => p.code.startsWith('SFC3-A')).length;
+  const panitia = allParticipants.filter(p => p.role === 'panitia').length;
+  const pesertaOnly = allParticipants.filter(p => p.role !== 'panitia');
+  const claimed = pesertaOnly.filter(p => p.claimed_tent_id).length;
   document.getElementById('dp-stats').innerHTML = `
     <div style="flex:1;text-align:center;padding:8px;background:var(--canvas);border-radius:8px">
       <div style="font-size:20px;font-weight:700">${total}</div>
@@ -2981,7 +2995,7 @@ function renderDataStats() {
       <div style="font-size:10px;color:var(--ink-muted)">SUDAH PILIH</div>
     </div>
     <div style="flex:1;text-align:center;padding:8px;background:var(--canvas);border-radius:8px">
-      <div style="font-size:20px;font-weight:700;color:var(--orange)">${total - claimed}</div>
+      <div style="font-size:20px;font-weight:700;color:var(--orange)">${pesertaOnly.length - claimed}</div>
       <div style="font-size:10px;color:var(--ink-muted)">BELUM PILIH</div>
     </div>
     <div style="flex:1;text-align:center;padding:8px;background:var(--canvas);border-radius:8px">
@@ -2993,13 +3007,15 @@ function renderDataStats() {
 function renderDataList() {
   const q = (document.getElementById('dp-search').value || '').toLowerCase();
   let list = allParticipants;
-  if (dataTab === 'peserta')    list = list.filter(p => !p.code.startsWith('SFC3-A'));
-  if (dataTab === 'panitia')    list = list.filter(p => p.code.startsWith('SFC3-A'));
-  if (dataTab === 'unassigned') list = list.filter(p => !p.claimed_tent_id);
+  if (dataTab === 'peserta')    list = list.filter(p => p.role !== 'panitia');
+  if (dataTab === 'panitia')    list = list.filter(p => p.role === 'panitia');
+  if (dataTab === 'unassigned') list = list.filter(p => p.role !== 'panitia' && !p.claimed_tent_id);
   if (q) list = list.filter(p => p.family_name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q));
 
   const el = document.getElementById('dp-list'); if (!el) return;
   if (!list.length) { el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--ink-muted)">Tidak ada data</div>'; return; }
+
+  const appUrl = window.location.origin + window.location.pathname;
 
   el.innerHTML = list.map(p => {
     const tent = p.claimed_tent_id ? tents.find(t => t.id === p.claimed_tent_id) : null;
@@ -3007,16 +3023,21 @@ function renderDataList() {
     const members = Array.isArray(p.member_names) && p.member_names.length ? p.member_names : [];
     const memberCount = p.members || members.length || 0;
     const availTents = tents.filter(t => t.status === 'available' && t.type === 'peserta').sort((a,b) => a.id.localeCompare(b.id));
+    const waText = encodeURIComponent(`Assalamu'alaikum Keluarga *${p.family_name}* 🌿\n\nBerikut kode voucher untuk memilih kavling tenda di *Sakinah Family Camp #3*:\n\n🎟️ Kode: *${p.code}*\n\n🔗 Akses peta: ${appUrl}\n\nMasukkan kode di menu Peserta, lalu pilih kavling yang tersedia. Sampai jumpa di camp! 🏕️`);
 
     return `<div style="background:var(--surface-1);border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:3px solid ${tentLabel ? 'var(--green)' : 'var(--hairline)'}">
       <div style="display:flex;align-items:flex-start;gap:10px">
         <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
-            <span style="font-size:11px;font-weight:700;color:var(--ink-muted);font-family:monospace">${p.code}</span>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
+            <span onclick="navigator.clipboard.writeText('${p.code}').then(()=>toast('Kode disalin!'))" title="Salin kode" style="font-size:13px;font-weight:700;color:var(--primary);font-family:monospace;letter-spacing:1.5px;cursor:pointer;border:1px dashed var(--primary);padding:2px 8px;border-radius:6px">${p.code}</span>
             ${tentLabel ? `<span style="font-size:10px;background:var(--green);color:#fff;padding:1px 6px;border-radius:10px;font-weight:600">${tentLabel}</span>` : `<span style="font-size:10px;background:var(--surface-2);color:var(--ink-muted);padding:1px 6px;border-radius:10px">Belum pilih</span>`}
           </div>
           <div style="font-size:14px;font-weight:600;margin-bottom:2px">${p.family_name}</div>
           ${memberCount ? `<div style="font-size:11px;color:var(--ink-muted)">${memberCount} anggota${members.length ? ': ' + members.slice(0,2).join(', ') + (members.length > 2 ? ` +${members.length-2}` : '') : ''}</div>` : ''}
+          <a href="https://wa.me/?text=${waText}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:11px;color:#25D366;text-decoration:none;font-weight:600">
+            <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.553 4.117 1.523 5.849L.057 23.5l5.797-1.44A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.006-1.37l-.36-.213-3.716.923.96-3.617-.234-.371A9.818 9.818 0 1 1 12 21.818z"/></svg>
+            Kirim WA
+          </a>
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
           ${tentLabel
