@@ -1721,8 +1721,8 @@ function showBSheet(t) {
     document.getElementById('bs-occ-name').textContent = `Kamu sudah punya kavling ${participantData.claimed_tent_id}`;
     document.getElementById('bs-occ-mem').textContent = '';
   } else if (!avail) {
-    document.getElementById('bs-occ-name').textContent = (mode === 'public') ? 'Terisi' : (t.family || 'Panitia SFC3');
-    document.getElementById('bs-occ-mem').textContent  = (mode === 'public') ? '' : (t.members ? t.members + ' anggota' : '');
+    document.getElementById('bs-occ-name').textContent = t.family || 'Panitia SFC3';
+    document.getElementById('bs-occ-mem').textContent  = t.members ? t.members + ' anggota' : '';
   } else {
     document.getElementById('bs-fam').value = participantData ? participantData.family_name : '';
     document.getElementById('bs-mbr').value = participantData ? participantData.members : '';
