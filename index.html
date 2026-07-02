@@ -1267,13 +1267,44 @@ function checkCollision(tentId) {
 // ══════════════════════════════════════════════
 
 const POIS = [
-  { name:'🔥 Api Unggun', lat:CAMP_CENTER[0]+.000005, lon:CAMP_CENTER[1], desc:'Pusat area camp' },
-  { name:'🚽 Toilet',     lat:-6.96601, lon:106.95738, desc:'10 pintu berjajar' },
-  { name:'🍳 Dapur Umum', lat:-6.96610, lon:106.95770, desc:'Dapur bersama' },
-  { name:'🚗 Parkiran',   lat:-6.96580, lon:106.95752, desc:'Area parkir kendaraan' },
-  { name:'🏊 Kolam Renang',lat:-6.96570,lon:106.95815, desc:'Kolam renang anak + gazebo' },
-  { name:'📖 Aula',        lat:-6.96590, lon:106.95780, desc:'Aula semi indoor + area sholat' },
+  { key:'api_unggun',  name:'🔥 Api Unggun',  lat:CAMP_CENTER[0]+.000005, lon:CAMP_CENTER[1], desc:'Pusat area camp' },
+  { key:'toilet',      name:'🚽 Toilet',       lat:-6.96601, lon:106.95738, desc:'10 pintu berjajar' },
+  { key:'dapur',       name:'🍳 Dapur Umum',   lat:-6.96610, lon:106.95770, desc:'Dapur bersama' },
+  { key:'parkir',      name:'🚗 Parkiran',      lat:-6.96580, lon:106.95752, desc:'Area parkir kendaraan' },
+  { key:'kolam',       name:'🏊 Kolam Renang',  lat:-6.96570, lon:106.95815, desc:'Kolam renang anak + gazebo' },
+  { key:'aula',        name:'📖 Aula',           lat:-6.96590, lon:106.95780, desc:'Aula semi indoor + area sholat' },
 ];
+let poiMarkers = [];
+
+function renderPOIs() {
+  poiMarkers.forEach(m => map.removeLayer(m));
+  poiMarkers = [];
+  const overrides = currentEvent?.poi_positions || {};
+  POIS.forEach(p => {
+    const lat = overrides[p.key]?.lat ?? p.lat;
+    const lon = overrides[p.key]?.lon ?? p.lon;
+    const isDraggable = mode === 'admin';
+    const ico = L.divIcon({
+      html:`<div style="font-size:20px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.5));cursor:${isDraggable?'grab':'default'}">${p.name.split(' ')[0]}</div>`,
+      iconSize:[24,24], iconAnchor:[12,12], className:''
+    });
+    const m = L.marker([lat, lon], { icon: ico, draggable: isDraggable });
+    m.bindTooltip(`<b>${p.name}</b><br>${p.desc}${isDraggable ? '<br><i style="color:#999">Drag untuk pindahkan</i>' : ''}`);
+    if (isDraggable) {
+      m.on('dragend', async ev => {
+        const { lat: newLat, lng: newLon } = ev.target.getLatLng();
+        if (!currentEvent) return;
+        const pos = { ...(currentEvent.poi_positions || {}) };
+        pos[p.key] = { lat: newLat, lon: newLon };
+        currentEvent.poi_positions = pos;
+        await sb.from('events').update({ poi_positions: pos }).eq('id', currentEvent.id);
+        toast(`📍 Posisi ${p.name} disimpan`);
+      });
+    }
+    m.addTo(map);
+    poiMarkers.push(m);
+  });
+}
 
 // ══════════════════════════════════════════════
 //   MAP INIT
@@ -1328,13 +1359,7 @@ async function initMap() {
     if (zv) zv.textContent = map.getZoom();
   });
 
-  POIS.forEach(p => {
-    const ico = L.divIcon({
-      html:`<div style="font-size:18px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));cursor:default">${p.name.split(' ')[0]}</div>`,
-      iconSize:[22,22], iconAnchor:[11,11], className:''
-    });
-    L.marker([p.lat, p.lon], { icon:ico }).bindTooltip(`<b>${p.name}</b><br>${p.desc}`).addTo(map);
-  });
+  renderPOIs();
 
   // Load data from Supabase
   const data = await dbLoadTents();
@@ -1669,13 +1694,10 @@ function showDetailPanel(t) {
   document.getElementById('dp-sz').textContent  = t.size;
   document.getElementById('dp-own').textContent = t.ownership === 'sendiri' ? 'Bawa Sendiri' : 'Sewa';
   document.getElementById('dp-fac').textContent = t.facilities;
-  const isPrivate = mode === 'public' && t.status === 'occupied';
-  document.getElementById('dp-fam').textContent = isPrivate ? 'Terisi' : (t.family || '—');
+  document.getElementById('dp-fam').textContent = t.family || '—';
   const names = Array.isArray(t.member_names) ? t.member_names : [];
   const memCount = names.length || (typeof t.members === 'number' ? t.members : 0);
-  if (isPrivate) {
-    document.getElementById('dp-mem').innerHTML = '';
-  } else if (names.length) {
+  if (names.length) {
     document.getElementById('dp-mem').innerHTML =
       `<div style="font-size:11px;color:var(--ink-muted);margin-top:2px">${memCount} anggota:</div>` +
       names.map(n => `<div style="font-size:12px;padding:2px 0;border-bottom:1px solid var(--hairline)">• ${n}</div>`).join('');
@@ -3819,6 +3841,7 @@ function applyMode(m) {
     if (coords.length) setTimeout(() => map.fitBounds(coords, { padding: [40, 40], maxZoom: 19 }), 300);
   }
   renderAllTents();
+  if (typeof renderPOIs === 'function') renderPOIs();
 }
 
 function toggleAdminDrawer(force) {
@@ -4756,6 +4779,8 @@ async function loadCurrentEvent() {
     document.getElementById('hdr-tagline').textContent = currentEvent.tagline;
     if (currentEvent.admin_pin) ADMIN_PIN = currentEvent.admin_pin;
   }
+  // Re-render POI setelah event dimuat (butuh poi_positions)
+  if (typeof renderPOIs === 'function' && typeof map !== 'undefined' && map) renderPOIs();
 }
 
 function openEventModal() {
