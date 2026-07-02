@@ -3318,6 +3318,8 @@ let participantData = null;
 let allParticipants = [];
 let dataTab = 'all';
 let dpExpanded = new Set();
+let _editingPId = null;
+let _addingParticipant = false;
 
 async function openDataPage() {
   const el = document.getElementById('m-data');
@@ -3399,53 +3401,109 @@ function renderDataList() {
   // ── DESKTOP: tabel ────────────────────────────────────────────────
   if (!isMobile) {
     const waIcon = `<svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.553 4.117 1.523 5.849L.057 23.5l5.797-1.44A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.006-1.37l-.36-.213-3.716.923.96-3.617-.234-.371A9.818 9.818 0 1 1 12 21.818z"/></svg>`;
+
+    const inp = (val, id, field, w='120px') =>
+      `<input id="pedit-${field}-${id}" value="${(val||'').replace(/"/g,'&quot;')}"
+        style="width:${w};padding:4px 6px;border:1px solid var(--primary);border-radius:6px;font-size:12px;background:var(--canvas);color:var(--ink)">`;
+
+    const addRow = _addingParticipant ? `
+      <tr style="background:#eff6ff;border-bottom:2px solid var(--primary)">
+        <td style="padding:6px 8px;color:var(--ink-muted);font-size:11px">NEw</td>
+        <td style="padding:4px 6px"><input id="padd-code" placeholder="Auto" style="width:80px;padding:4px 6px;border:1px solid var(--primary);border-radius:6px;font-size:12px;background:var(--canvas);color:var(--ink);font-family:monospace"></td>
+        <td style="padding:4px 6px"><input id="padd-name" placeholder="Nama Keluarga" style="width:160px;padding:4px 6px;border:1px solid var(--primary);border-radius:6px;font-size:12px;background:var(--canvas);color:var(--ink)"></td>
+        <td style="padding:4px 6px;text-align:center"><input id="padd-members" type="number" min="1" placeholder="0" style="width:55px;padding:4px 6px;border:1px solid var(--primary);border-radius:6px;font-size:12px;text-align:center;background:var(--canvas);color:var(--ink)"></td>
+        <td style="padding:4px 6px">
+          <select id="padd-role" style="padding:4px 6px;border:1px solid var(--primary);border-radius:6px;font-size:12px;background:var(--canvas);color:var(--ink)">
+            <option value="peserta">Peserta</option>
+            <option value="panitia">Panitia</option>
+          </select>
+        </td>
+        <td style="padding:4px 6px"><input id="padd-members-names" placeholder="Nama|Nama|..." style="width:180px;padding:4px 6px;border:1px solid var(--primary);border-radius:6px;font-size:12px;background:var(--canvas);color:var(--ink)"></td>
+        <td style="padding:4px 8px;white-space:nowrap">
+          <button onclick="saveAddParticipant()" style="padding:4px 10px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;margin-right:4px">Simpan</button>
+          <button onclick="_addingParticipant=false;renderDataList()" style="padding:4px 8px;border:1px solid var(--hairline);background:transparent;border-radius:6px;cursor:pointer;font-size:12px">Batal</button>
+        </td>
+      </tr>` : '';
+
     el.innerHTML = `
+      <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+        <button onclick="_addingParticipant=true;_editingPId=null;renderDataList()"
+          style="padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">
+          + Tambah Peserta
+        </button>
+      </div>
       <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--hairline)">
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <thead>
             <tr style="background:var(--surface-1);border-bottom:2px solid var(--hairline)">
-              <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted);white-space:nowrap">#</th>
-              <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted);white-space:nowrap">Voucher</th>
+              <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted)">#</th>
+              <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted)">Voucher</th>
               <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted)">Nama Keluarga</th>
               <th style="padding:10px 12px;text-align:center;font-weight:700;color:var(--ink-muted)">Anggota</th>
-              <th style="padding:10px 12px;text-align:center;font-weight:700;color:var(--ink-muted)">Kavling</th>
+              <th style="padding:10px 12px;text-align:center;font-weight:700;color:var(--ink-muted)">Kavling / Role</th>
               <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted)">Nama Anggota</th>
               <th style="padding:10px 12px;text-align:center;font-weight:700;color:var(--ink-muted)">Aksi</th>
             </tr>
           </thead>
           <tbody>
+            ${addRow}
             ${list.map((p, i) => {
               const { tentLabel, memberList, memberCount, waText, roleLabel } = buildRow(p);
               const rowBg = i % 2 === 0 ? 'var(--canvas)' : 'var(--surface-1)';
+              const isEditing = _editingPId === String(p.id);
+
+              if (isEditing) {
+                const mnRaw = typeof p.member_names === 'string' ? p.member_names : (Array.isArray(p.member_names) ? p.member_names.join('|') : '');
+                return `<tr style="background:#eff6ff;border-bottom:2px solid var(--primary)">
+                  <td style="padding:6px 8px;color:var(--ink-muted);font-size:11px">${i+1}</td>
+                  <td style="padding:4px 6px">${inp(p.code, p.id, 'code','90px')}</td>
+                  <td style="padding:4px 6px">${inp(p.family_name, p.id, 'name','160px')}</td>
+                  <td style="padding:4px 6px;text-align:center">${inp(p.members||'', p.id, 'members','55px')}</td>
+                  <td style="padding:4px 6px">
+                    <select id="pedit-role-${p.id}" style="padding:4px 6px;border:1px solid var(--primary);border-radius:6px;font-size:12px;background:var(--canvas);color:var(--ink)">
+                      <option value="peserta" ${p.role!=='panitia'?'selected':''}>Peserta</option>
+                      <option value="panitia" ${p.role==='panitia'?'selected':''}>Panitia</option>
+                    </select>
+                  </td>
+                  <td style="padding:4px 6px">${inp(mnRaw, p.id, 'mnames','180px')}</td>
+                  <td style="padding:4px 8px;white-space:nowrap">
+                    <button onclick="saveParticipantEdit('${p.id}')" style="padding:4px 10px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;margin-right:4px">Simpan</button>
+                    <button onclick="_editingPId=null;renderDataList()" style="padding:4px 8px;border:1px solid var(--hairline);background:transparent;border-radius:6px;cursor:pointer;font-size:12px">Batal</button>
+                  </td>
+                </tr>`;
+              }
+
               const assignCell = tentLabel
                 ? `<div style="display:flex;gap:4px;align-items:center">
                      <span style="font-size:12px;padding:2px 8px;border-radius:10px;font-weight:700;background:var(--green);color:#fff">${tentLabel}</span>
                      <button onclick="adminUnassignTent('${p.id}','${p.claimed_tent_id}')" title="Lepas kavling" style="padding:3px 6px;border:1px solid var(--hairline);background:transparent;border-radius:5px;cursor:pointer;color:var(--ink-muted);font-size:11px">✕</button>
                      <button onclick="zoomToTent('${p.claimed_tent_id}')" title="Lihat peta" style="padding:3px 6px;border:1px solid var(--primary);background:transparent;border-radius:5px;cursor:pointer;color:var(--primary);font-size:11px">🗺</button>
                    </div>`
-                : `<select onchange="adminAssignTent('${p.id}',this.value);this.value=''"
-                     style="font-size:12px;padding:4px 6px;border:1px solid var(--hairline);border-radius:6px;background:var(--surface-1);color:var(--ink);cursor:pointer;max-width:130px">
-                     <option value="">Assign…</option>
-                     ${availTents.map(t => `<option value="${t.id}">${t.id} (${t.size})</option>`).join('')}
-                   </select>`;
+                : `<div style="display:flex;gap:4px;align-items:center">
+                     ${roleLabel || '<span style="font-size:11px;color:var(--ink-muted)">Peserta</span>'}
+                     <select onchange="adminAssignTent('${p.id}',this.value);this.value=''"
+                       style="font-size:12px;padding:3px 6px;border:1px solid var(--hairline);border-radius:6px;background:var(--surface-1);color:var(--ink);cursor:pointer;max-width:120px">
+                       <option value="">Assign kavling…</option>
+                       ${availTents.map(t => `<option value="${t.id}">${t.id} (${t.size})</option>`).join('')}
+                     </select>
+                   </div>`;
+
               return `<tr style="background:${rowBg};border-bottom:1px solid var(--hairline)">
                 <td style="padding:8px 12px;color:var(--ink-muted);font-size:12px">${i+1}</td>
                 <td style="padding:8px 12px;font-family:monospace;font-weight:700;color:var(--primary);letter-spacing:1px;white-space:nowrap">${p.code}</td>
-                <td style="padding:8px 12px;font-weight:600">${p.family_name} ${roleLabel}</td>
-                <td style="padding:8px 12px;text-align:center;color:${memberCount ? 'var(--ink)' : 'var(--ink-muted)'};font-weight:${memberCount ? '600' : '400'}">${memberCount || '—'}</td>
+                <td style="padding:8px 12px;font-weight:600">${p.family_name}</td>
+                <td style="padding:8px 12px;text-align:center;color:${memberCount?'var(--ink)':'var(--ink-muted)'};font-weight:${memberCount?'600':'400'}">${memberCount||'—'}</td>
                 <td style="padding:6px 12px">${assignCell}</td>
-                <td style="padding:8px 12px;font-size:11px;color:var(--ink-muted);max-width:200px">
-                  ${memberList.length ? memberList.join(', ') : '—'}
-                </td>
+                <td style="padding:8px 12px;font-size:11px;color:var(--ink-muted);max-width:200px">${memberList.length ? memberList.join(', ') : '—'}</td>
                 <td style="padding:6px 12px;text-align:center;white-space:nowrap">
                   <a href="https://wa.me/?text=${waText}" target="_blank" title="Kirim WA"
-                     style="display:inline-flex;align-items:center;gap:3px;padding:4px 8px;background:#25D366;color:#fff;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;margin-right:4px">
+                     style="display:inline-flex;align-items:center;gap:3px;padding:4px 7px;background:#25D366;color:#fff;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;margin-right:3px">
                      ${waIcon} WA
                   </a>
+                  <button onclick="_editingPId='${p.id}';_addingParticipant=false;renderDataList()" title="Edit"
+                     style="padding:4px 7px;border:1px solid var(--primary);background:transparent;border-radius:6px;cursor:pointer;color:var(--primary);font-size:11px;margin-right:3px">✏️</button>
                   <button onclick="deleteParticipant('${p.id}','${p.family_name.replace(/'/g,"\\'")}','${p.claimed_tent_id||''}')"
-                     title="Hapus" style="padding:4px 8px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:6px;cursor:pointer;color:var(--red,#ef4444);font-size:11px;font-weight:600">
-                     Hapus
-                  </button>
+                     title="Hapus" style="padding:4px 7px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:6px;cursor:pointer;color:var(--red,#ef4444);font-size:11px;font-weight:600">🗑</button>
                 </td>
               </tr>`;
             }).join('')}
@@ -3773,8 +3831,8 @@ async function resetAllParticipants() {
   occupiedTents.forEach(t => { t.status = 'available'; t.family = ''; t.members = 0; t.member_names = []; });
   if (occupiedTents.length) await dbUpsertTents(occupiedTents);
 
-  // Hapus semua peserta dari DB
-  const { error } = await sb.from('participants').delete().neq('id', 0);
+  // Hapus semua peserta dari DB (gte 1 agar RLS policy terpakai)
+  const { error } = await sb.from('participants').delete().gte('id', 1);
   if (error) { toast('Gagal hapus: ' + error.message, true); return; }
 
   allParticipants = [];
@@ -3784,6 +3842,46 @@ async function resetAllParticipants() {
   renderDataStats();
   renderDataList();
   toast(`✅ ${total} data peserta dihapus. Siap import ulang.`);
+}
+
+async function saveParticipantEdit(id) {
+  const p = allParticipants.find(x => String(x.id) === String(id)); if (!p) return;
+  const code    = document.getElementById(`pedit-code-${id}`)?.value.trim();
+  const name    = document.getElementById(`pedit-name-${id}`)?.value.trim();
+  const members = parseInt(document.getElementById(`pedit-members-${id}`)?.value) || 0;
+  const role    = document.getElementById(`pedit-role-${id}`)?.value || 'peserta';
+  const mnames  = document.getElementById(`pedit-mnames-${id}`)?.value.trim() || '';
+  if (!name) { toast('Nama tidak boleh kosong', true); return; }
+
+  const updates = { family_name: name, members, role, member_names: mnames, code: code || p.code };
+  const { error } = await sb.from('participants').update(updates).eq('id', id);
+  if (error) { toast('Gagal simpan: ' + error.message, true); return; }
+  Object.assign(p, updates);
+  _editingPId = null;
+  toast(`✅ Data "${name}" disimpan`);
+  renderDataStats(); renderDataList();
+}
+
+async function saveAddParticipant() {
+  const nameEl = document.getElementById('padd-name');
+  const name = nameEl?.value.trim();
+  if (!name) { toast('Nama tidak boleh kosong', true); nameEl?.focus(); return; }
+  const members  = parseInt(document.getElementById('padd-members')?.value) || 0;
+  const role     = document.getElementById('padd-role')?.value || 'peserta';
+  const mnames   = document.getElementById('padd-members-names')?.value.trim() || '';
+  const codeInp  = document.getElementById('padd-code')?.value.trim().toUpperCase();
+
+  // Generate voucher jika kosong
+  const existingCodes = new Set(allParticipants.map(p => p.code));
+  const code = codeInp && codeInp.length >= 3 ? codeInp : generateVoucherCode(existingCodes);
+
+  const row = { code, family_name: name, members, role, member_names: mnames, claimed_tent_id: null };
+  const { data, error } = await sb.from('participants').insert(row).select().single();
+  if (error) { toast('Gagal tambah: ' + error.message, true); return; }
+  allParticipants.push(data);
+  _addingParticipant = false;
+  toast(`✅ Peserta "${name}" (${data.code}) ditambahkan`);
+  renderDataStats(); renderDataList();
 }
 
 async function deleteParticipant(id, name, claimedTentId) {
