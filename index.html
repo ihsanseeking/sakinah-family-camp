@@ -3838,6 +3838,65 @@ let participantData = null;
 let allParticipants = [];
 let dataTab = 'all';
 let dpExpanded = new Set();
+let _sortPeserta = { col: null, dir: 'asc' };
+let _sortKavling = { col: null, dir: 'asc' };
+
+// Helper: render <th> dengan sort indicator
+function thS(label, col, sortState, onClickFn, align = 'left') {
+  const active = sortState.col === col;
+  const arrow  = active ? (sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
+  const style  = `padding:10px 12px;text-align:${align};font-weight:700;color:${active ? 'var(--primary)' : 'var(--ink-muted)'};cursor:pointer;user-select:none;white-space:nowrap`;
+  return `<th style="${style}" onclick="${onClickFn}('${col}')">${label}${arrow}</th>`;
+}
+
+function applySortPeserta(list) {
+  const { col, dir } = _sortPeserta;
+  if (!col) return list;
+  return [...list].sort((a, b) => {
+    let va, vb;
+    if (col === 'code')         { va = a.code||'';           vb = b.code||''; }
+    else if (col === 'name')    { va = a.family_name||'';    vb = b.family_name||''; }
+    else if (col === 'members') { va = a.members||0;         vb = b.members||0; }
+    else if (col === 'kavling') { va = a.claimed_tent_id||'zzz'; vb = b.claimed_tent_id||'zzz'; }
+    else if (col === 'role')    { va = a.role||'';           vb = b.role||''; }
+    else if (col === 'tenda')   { va = a.tent_ownership||''; vb = b.tent_ownership||''; }
+    else if (col === 'size')    { va = a.tent_size||'';      vb = b.tent_size||''; }
+    else if (col === 'phone')   { va = a.phone||'';          vb = b.phone||''; }
+    else return 0;
+    if (typeof va === 'number') return dir === 'asc' ? va - vb : vb - va;
+    return dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+}
+
+function applySortKavling(list) {
+  const { col, dir } = _sortKavling;
+  if (!col) return list;
+  return [...list].sort((a, b) => {
+    let va, vb;
+    if (col === 'id')       { va = a.id||'';         vb = b.id||''; }
+    else if (col === 'status')  { va = a.status||'';     vb = b.status||''; }
+    else if (col === 'family')  { va = a.family||'zzz';  vb = b.family||'zzz'; }
+    else if (col === 'members') { va = a.members||0;     vb = b.members||0; }
+    else if (col === 'size')    { va = a.size||'';       vb = b.size||''; }
+    else if (col === 'type')    { va = a.type||'';       vb = b.type||''; }
+    else if (col === 'ownership') { va = a.ownership||''; vb = b.ownership||''; }
+    else return 0;
+    if (typeof va === 'number') return dir === 'asc' ? va - vb : vb - va;
+    return dir === 'asc' ? va.localeCompare(vb, undefined, { numeric: true }) : vb.localeCompare(va, undefined, { numeric: true });
+  });
+}
+
+function setSortPeserta(col) {
+  if (_sortPeserta.col === col) _sortPeserta.dir = _sortPeserta.dir === 'asc' ? 'desc' : 'asc';
+  else { _sortPeserta.col = col; _sortPeserta.dir = 'asc'; }
+  renderDataList();
+}
+
+function setSortKavling(col) {
+  if (_sortKavling.col === col) _sortKavling.dir = _sortKavling.dir === 'asc' ? 'desc' : 'asc';
+  else { _sortKavling.col = col; _sortKavling.dir = 'asc'; }
+  renderKavlingList();
+}
 let _editingPId = null;
 let _addingParticipant = false;
 
@@ -3896,6 +3955,7 @@ function renderDataList() {
   if (dataTab === 'panitia')    list = list.filter(p => p.role === 'panitia');
   if (dataTab === 'unassigned') list = list.filter(p => p.role !== 'panitia' && !p.claimed_tent_id);
   if (q) list = list.filter(p => p.family_name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q));
+  list = applySortPeserta(list);
 
   const el = document.getElementById('dp-list'); if (!el) return;
   if (!list.length) { el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--ink-muted)">Tidak ada data</div>'; return; }
@@ -3967,13 +4027,13 @@ function renderDataList() {
           <thead>
             <tr style="background:var(--surface-1);border-bottom:2px solid var(--hairline)">
               <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted)">#</th>
-              <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted)">Voucher</th>
-              <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted)">Nama Keluarga</th>
-              <th style="padding:10px 12px;text-align:center;font-weight:700;color:var(--ink-muted)">Anggota</th>
-              <th style="padding:10px 12px;text-align:center;font-weight:700;color:var(--ink-muted)">Kavling / Role</th>
-              <th style="padding:10px 12px;text-align:center;font-weight:700;color:var(--ink-muted)">Tenda</th>
-              <th style="padding:10px 12px;text-align:center;font-weight:700;color:var(--ink-muted)">Size / Kap</th>
-              <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted)">No. WA</th>
+              ${thS('Voucher','code',_sortPeserta,'setSortPeserta')}
+              ${thS('Nama Keluarga','name',_sortPeserta,'setSortPeserta')}
+              ${thS('Anggota','members',_sortPeserta,'setSortPeserta','center')}
+              ${thS('Kavling / Role','kavling',_sortPeserta,'setSortPeserta','center')}
+              ${thS('Tenda','tenda',_sortPeserta,'setSortPeserta','center')}
+              ${thS('Size / Kap','size',_sortPeserta,'setSortPeserta','center')}
+              ${thS('No. WA','phone',_sortPeserta,'setSortPeserta')}
               <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted)">Nama Anggota</th>
               <th style="padding:10px 12px;text-align:center;font-weight:700;color:var(--ink-muted)">Aksi</th>
             </tr>
@@ -4174,8 +4234,10 @@ function renderKavlingList() {
   const q = (document.getElementById('dp-search').value || '').toLowerCase();
   const el = document.getElementById('dp-list'); if (!el) return;
 
-  let list = tents.slice().sort((a,b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+  let list = tents.slice();
   if (q) list = list.filter(t => t.id.toLowerCase().includes(q) || (t.family||'').toLowerCase().includes(q));
+  list = applySortKavling(list);
+  if (!_sortKavling.col) list.sort((a,b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
 
   const total = tents.length;
   const occupied = tents.filter(t => t.status === 'occupied').length;
@@ -4210,13 +4272,13 @@ function renderKavlingList() {
         <table style="width:100%;border-collapse:collapse;font-size:12.5px">
           <thead>
             <tr style="background:var(--surface-1);border-bottom:2px solid var(--hairline)">
-              <th style="padding:8px 10px;text-align:left;font-weight:700;color:var(--ink-muted)">ID</th>
-              <th style="padding:8px 10px;text-align:left;font-weight:700;color:var(--ink-muted)">Status</th>
-              <th style="padding:8px 10px;text-align:left;font-weight:700;color:var(--ink-muted)">Penghuni</th>
-              <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--ink-muted)">Anggota</th>
-              <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--ink-muted)">Ukuran</th>
-              <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--ink-muted)">Tipe</th>
-              <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--ink-muted)">Tenda</th>
+              ${thS('ID','id',_sortKavling,'setSortKavling')}
+              ${thS('Status','status',_sortKavling,'setSortKavling')}
+              ${thS('Penghuni','family',_sortKavling,'setSortKavling')}
+              ${thS('Anggota','members',_sortKavling,'setSortKavling','center')}
+              ${thS('Ukuran','size',_sortKavling,'setSortKavling','center')}
+              ${thS('Tipe','type',_sortKavling,'setSortKavling','center')}
+              ${thS('Tenda','ownership',_sortKavling,'setSortKavling','center')}
               <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--ink-muted)">Aksi</th>
             </tr>
           </thead>
