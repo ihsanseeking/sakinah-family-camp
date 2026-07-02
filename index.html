@@ -934,7 +934,7 @@ async function dbLoadMapLayers() {
 async function dbUpsertMapLayer(l) {
   const { error } = await sb.from('map_layers').upsert({
     id: l.id, type: l.type, name: l.name, color: l.color, coords: l.coords,
-    visible: l.visible, updated_at: new Date().toISOString()
+    visible: l.visible, group_name: l.group_name || null, updated_at: new Date().toISOString()
   }, { onConflict: 'id' });
   if (error) console.error('dbUpsertMapLayer:', error);
 }
@@ -2276,6 +2276,7 @@ async function onMapClick(e) {
 }
 
 let expandedLayerIds = new Set();
+let collapsedGroups = new Set();
 let layerListCollapsed = true;
 let ovListCollapsed = true;
 
@@ -2303,21 +2304,76 @@ function toggleLayerExpand(id) {
 function renderLayerList() {
   const el = document.getElementById('layer-list'); if (!el) return;
   if (!mapLayers.length) { el.innerHTML = ''; return; }
-  const sortedLayers = [...mapLayers].sort((a, b) => (b.visible ? 1 : 0) - (a.visible ? 1 : 0));
-  el.innerHTML = sortedLayers.map(l => `
+
+  // Group layers
+  const grouped = {};
+  [...mapLayers]
+    .sort((a, b) => (b.visible ? 1 : 0) - (a.visible ? 1 : 0))
+    .forEach(l => {
+      const g = l.group_name || '—';
+      if (!grouped[g]) grouped[g] = [];
+      grouped[g].push(l);
+    });
+
+  const renderItem = l => `
     <div>
       <div class="layer-item" onclick="toggleLayerExpand('${l.id}')">
-        <div class="layer-dot" style="background:${l.color}"></div>
+        <div class="layer-dot" style="background:${l.color};cursor:pointer" onclick="event.stopPropagation();pickLayerColor('${l.id}')" title="Ganti warna"></div>
         <span class="layer-lbl" style="color:${l.visible?'var(--ink)':'var(--ink-muted)'}">${l.name}</span>
         <button class="lbtn ${l.visible?'active':''}" onclick="event.stopPropagation();toggleLayerVis('${l.id}')" title="${l.visible?'Sembunyikan':'Tampilkan'}"><i data-lucide="eye${l.visible?'':'-off'}" class="lucide" style="width:13px;height:13px"></i></button>
       </div>
       ${expandedLayerIds.has(l.id) ? `
-      <div style="display:flex;gap:4px;padding:2px 8px 6px 22px">
-        <button class="lbtn" style="width:auto;padding:3px 8px;font-size:11px;gap:4px" onclick="renameMapLayer('${l.id}')"><i data-lucide="pencil" class="lucide" style="width:12px;height:12px"></i> Ubah Nama</button>
+      <div style="display:flex;gap:4px;padding:2px 8px 6px 22px;flex-wrap:wrap">
+        <button class="lbtn" style="width:auto;padding:3px 8px;font-size:11px;gap:4px" onclick="renameMapLayer('${l.id}')"><i data-lucide="pencil" class="lucide" style="width:12px;height:12px"></i> Nama</button>
+        <button class="lbtn" style="width:auto;padding:3px 8px;font-size:11px;gap:4px" onclick="setLayerGroup('${l.id}')"><i data-lucide="folder" class="lucide" style="width:12px;height:12px"></i> Grup</button>
         <button class="lbtn" style="width:auto;padding:3px 8px;font-size:11px;gap:4px;color:var(--red)" onclick="deleteMapLayer('${l.id}')"><i data-lucide="trash-2" class="lucide" style="width:12px;height:12px"></i> Hapus</button>
       </div>` : ''}
-    </div>`).join('');
+    </div>`;
+
+  el.innerHTML = Object.entries(grouped).map(([grp, layers]) => {
+    const isCollapsed = collapsedGroups.has(grp);
+    return `
+    <div style="margin-bottom:4px">
+      <div onclick="toggleGroupCollapse('${grp}')" style="display:flex;align-items:center;gap:5px;padding:4px 6px;cursor:pointer;border-radius:6px;background:var(--surface-1);margin-bottom:2px">
+        <span style="font-size:9px;transition:transform .2s;display:inline-block;transform:rotate(${isCollapsed?'-90':'0'}deg)">▼</span>
+        <span style="font-size:11px;font-weight:600;color:var(--ink-muted);flex:1">${grp}</span>
+        <span style="font-size:10px;color:var(--ink-muted)">${layers.length}</span>
+      </div>
+      ${isCollapsed ? '' : layers.map(renderItem).join('')}
+    </div>`;
+  }).join('');
   lucide.createIcons();
+}
+
+function toggleGroupCollapse(grp) {
+  collapsedGroups.has(grp) ? collapsedGroups.delete(grp) : collapsedGroups.add(grp);
+  renderLayerList();
+}
+
+function pickLayerColor(id) {
+  const l = mapLayers.find(x => x.id === id); if (!l) return;
+  const inp = document.createElement('input');
+  inp.type = 'color'; inp.value = l.color;
+  inp.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+  document.body.appendChild(inp);
+  inp.click();
+  inp.addEventListener('change', async () => {
+    l.color = inp.value;
+    if (l.layer.setStyle) l.layer.setStyle({ color: l.color, fillColor: l.color });
+    await dbUpsertMapLayer(l);
+    renderLayerList();
+    document.body.removeChild(inp);
+  });
+  inp.addEventListener('blur', () => setTimeout(() => { if (document.body.contains(inp)) document.body.removeChild(inp); }, 300));
+}
+
+function setLayerGroup(id) {
+  const l = mapLayers.find(x => x.id === id); if (!l) return;
+  const g = prompt('Nama grup (kosongkan untuk hapus dari grup):', l.group_name || '');
+  if (g === null) return;
+  l.group_name = g.trim() || null;
+  dbUpsertMapLayer(l);
+  renderLayerList();
 }
 
 function toggleLayerVis(id) {
