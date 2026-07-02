@@ -4787,24 +4787,37 @@ function locateMe() {
 function exportPDF() {
   const el = document.createElement('div');
   el.style.cssText = 'padding:32px 40px;font-family:Inter,sans-serif;font-size:12px;color:#111;background:#fff';
-  const rows = tents.map(t => `
+  const sortedTents = tents.slice().sort((a,b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+  const rows = sortedTents.map(t => `
     <tr style="border-bottom:1px solid #eee">
-      <td style="padding:6px 8px">${t.id}</td>
-      <td style="padding:6px 8px">${t.size}</td>
+      <td style="padding:6px 8px;font-weight:600">${t.id}</td>
+      <td style="padding:6px 8px">${t.size || '—'}</td>
+      <td style="padding:6px 8px">${t.ownership === 'sendiri' ? '🏕️ Bawa Sendiri' : '🔑 Sewa'}</td>
       <td style="padding:6px 8px">${t.type === 'panitia' ? 'Panitia' : (t.status === 'occupied' ? 'Terisi' : 'Tersedia')}</td>
       <td style="padding:6px 8px">${t.family || '—'}</td>
-      <td style="padding:6px 8px">${t.members || '—'}</td>
+      <td style="padding:6px 8px;text-align:center">${t.members || '—'}</td>
     </tr>`).join('');
+  const occupiedCount = tents.filter(t => t.status === 'occupied').length;
+  const sewaCount = tents.filter(t => t.ownership !== 'sendiri').length;
+  const sendiriCount = tents.filter(t => t.ownership === 'sendiri').length;
   el.innerHTML = `
     <h1 style="font-size:20px;font-weight:700;margin-bottom:2px">Sakinah Family Camp #3</h1>
-    <p style="color:#999;margin-bottom:16px">Bukit Baros · Sukabumi · Jawa Barat · 2026</p>
+    <p style="color:#999;margin-bottom:8px">Bukit Baros · Sukabumi · Jawa Barat · 2026</p>
+    <div style="display:flex;gap:16px;margin-bottom:16px;font-size:11px;color:#555">
+      <span>Total kavling: <b>${tents.length}</b></span>
+      <span>Terisi: <b>${occupiedCount}</b></span>
+      <span>Kosong: <b>${tents.length - occupiedCount}</b></span>
+      <span>🔑 Sewa: <b>${sewaCount}</b></span>
+      <span>🏕️ Bawa Sendiri: <b>${sendiriCount}</b></span>
+    </div>
     <table style="width:100%;border-collapse:collapse;font-size:11px">
       <thead><tr style="background:#f5f5f5;font-weight:600">
         <th style="padding:8px;text-align:left">Kavling</th>
         <th style="padding:8px;text-align:left">Ukuran</th>
+        <th style="padding:8px;text-align:left">Tenda</th>
         <th style="padding:8px;text-align:left">Status</th>
         <th style="padding:8px;text-align:left">Keluarga</th>
-        <th style="padding:8px;text-align:left">Anggota</th>
+        <th style="padding:8px;text-align:center">Anggota</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
