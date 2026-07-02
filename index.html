@@ -488,11 +488,6 @@
     </div>
 
     <div class="sb-section">
-      <div class="sb-title">Mode Edit</div>
-      <button class="tool-btn" id="btn-edit-mode" onclick="toggleEditMode()" style="font-weight:600;color:var(--ink-muted)"><i data-lucide="pencil" class="lucide"></i>Mode Edit: <span id="edit-mode-lbl">OFF</span></button>
-    </div>
-
-    <div class="sb-section">
       <div class="sb-title" onclick="toggleLayerList()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none">
         Layer Peta
         <span id="layer-list-chevron" style="font-size:10px;transition:transform .2s;transform:rotate(-90deg)">▼</span>
@@ -510,7 +505,8 @@
     </div>
 
     <div class="sb-section">
-      <div class="sb-title">Alat Gambar & Tanda</div>
+      <div class="sb-title">Tools</div>
+      <button class="tool-btn" id="btn-edit-mode" onclick="toggleEditMode()" style="font-weight:600;color:var(--ink-muted);margin-bottom:8px"><i data-lucide="pencil" class="lucide"></i>Mode Edit: <span id="edit-mode-lbl">OFF</span></button>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
         <button class="draw-tool-btn" id="btn-draw-area" onclick="toggleDrawArea()" title="Area Kustom"><i data-lucide="hexagon" class="lucide" style="width:16px;height:16px"></i></button>
         <button class="draw-tool-btn" id="btn-draw-path" onclick="toggleDrawPath()" title="Jalur Setapak"><i data-lucide="footprints" class="lucide" style="width:16px;height:16px"></i></button>
