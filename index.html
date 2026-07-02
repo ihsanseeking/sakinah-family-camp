@@ -1051,7 +1051,14 @@ async function dbLoadEvents() {
   return data || [];
 }
 async function dbUpsertEvent(ev) {
-  const { error } = await sb.from('events').upsert({ ...ev, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+  const { id, ...fields } = ev;
+  const payload = { ...fields, updated_at: new Date().toISOString() };
+  let error;
+  if (id) {
+    ({ error } = await sb.from('events').update(payload).eq('id', id));
+  } else {
+    ({ error } = await sb.from('events').insert(payload));
+  }
   if (error) console.error('dbUpsertEvent:', error);
 }
 async function dbLoadAllParticipants() {
