@@ -1137,8 +1137,8 @@ const POIS = [
 //   MAP INIT
 // ══════════════════════════════════════════════
 const TILE_LAYERS = [
-  { id:'satelit', label:'Satelit',       url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr:'Tiles &copy; Esri', maxNative:19 },
-  { id:'hybrid',  label:'Satelit+Label', url:'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', attr:'Tiles &copy; Esri', maxNative:19, base:'satelit' },
+  { id:'satelit', label:'Satelit',       url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr:'Tiles &copy; Esri', maxNative:18 },
+  { id:'hybrid',  label:'Satelit+Label', url:'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', attr:'Tiles &copy; Esri', maxNative:18, base:'satelit' },
   { id:'osm',     label:'Peta',          url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attr:'&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>', maxNative:19 },
 ];
 let currentTileIdx = 0;
@@ -1177,7 +1177,7 @@ async function initMap() {
   applyTileLayer(0); // default: satelit
 
   L.control.zoom({ position:'topright' }).addTo(map);
-  L.control.scale({ position:'bottomleft', imperial:false, maxWidth:120 }).addTo(map);
+  L.control.scale({ position:'bottomright', imperial:false, maxWidth:120 }).addTo(map);
 
   map.on('zoomend', () => {
     if (mode === 'admin') checkZoomForEditMode();
