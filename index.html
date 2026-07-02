@@ -553,10 +553,11 @@
 
 
     <div class="map-legend">
-      <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>Tersedia</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#22c55e"></div>Tersedia</div>
       <div class="leg-item"><div class="leg-dot" style="background:#f59e0b"></div>Sewa</div>
-      <div class="leg-item"><div class="leg-dot" style="background:#8b5cf6"></div>Sendiri</div>
-      <div class="leg-item"><div class="leg-dot" style="background:var(--blue)"></div>Panitia</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#8b5cf6"></div>Bawa Sendiri</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#3b82f6"></div>Panitia Kosong</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#0ea5e9"></div>Panitia Sewa</div>
     </div>
 
     <div id="zoom-indicator" style="position:absolute;right:16px;top:96px;z-index:500;background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius-sm);padding:2px 7px;font-size:11px;font-weight:600;color:var(--ink-muted);pointer-events:none;box-shadow:var(--shadow-sm)">Z<span id="zoom-val">18</span></div>
@@ -1385,13 +1386,13 @@ function renderAllTents() {
 }
 
 function tentColor(t) {
-  if (t.type === 'panitia') return { fill:'#3b82f6', stroke:'#2563eb' };
   if (t.status === 'occupied') {
-    return t.ownership === 'sendiri'
-      ? { fill:'#8b5cf6', stroke:'#7c3aed' }  // ungu = bawa sendiri
-      : { fill:'#f59e0b', stroke:'#d97706' };  // kuning = sewa
+    if (t.ownership === 'sendiri') return { fill:'#8b5cf6', stroke:'#7c3aed' }; // ungu = bawa sendiri
+    if (t.type === 'panitia')     return { fill:'#0ea5e9', stroke:'#0284c7' };  // biru muda = panitia sewa
+    return { fill:'#f59e0b', stroke:'#d97706' };                                // kuning = peserta sewa
   }
-  return { fill:'#22c55e', stroke:'#16a34a' };
+  if (t.type === 'panitia') return { fill:'#3b82f6', stroke:'#2563eb' };        // biru = panitia kosong
+  return { fill:'#22c55e', stroke:'#16a34a' };                                  // hijau = peserta kosong
 }
 
 function drawTent(t) {
