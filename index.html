@@ -4004,7 +4004,7 @@ async function deleteTentFromList(id) {
     await sb.from('participants').update({ claimed_tent_id: null }).eq('id', p.id);
   }
   // Hapus dari peta
-  if (tentMarkers[id]) { map.removeLayer(tentMarkers[id]); delete tentMarkers[id]; }
+  if (tentMarkers[id]) { tentMarkers[id].remove(); delete tentMarkers[id]; }
   // Hapus dari DB
   const { error } = await sb.from('tents').delete().eq('id', id);
   if (error) { toast('Gagal hapus: ' + error.message, true); return; }
