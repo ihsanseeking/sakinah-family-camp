@@ -3566,8 +3566,16 @@ let _csvParsed = [];
 const VOUCHER_ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L
 
 // Mapping jumlah anggota → ukuran tenda & kapasitas
+function parseTentSizeOption(val) {
+  if (val === '3×3m-2P') return { size: '3×3m', capacity: 2 };
+  if (val === '3×3m')    return { size: '3×3m', capacity: 4 };
+  if (val === '4×4m')    return { size: '4×4m', capacity: 6 };
+  if (val === '4×6m')    return { size: '4×6m', capacity: 10 };
+  return { size: '6×6m', capacity: 14 };
+}
 function tentSizeFromMembers(memberCount) {
   const n = memberCount || 1;
+  if (n <= 2)  return { size: '3×3m', capacity: 2 };
   if (n <= 4)  return { size: '3×3m', capacity: 4 };
   if (n <= 6)  return { size: '4×4m', capacity: 6 };
   if (n <= 10) return { size: '4×6m', capacity: 10 };
@@ -4077,7 +4085,7 @@ function renderDataList() {
     const waIcon = `<svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.553 4.117 1.523 5.849L.057 23.5l5.797-1.44A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.006-1.37l-.36-.213-3.716.923.96-3.617-.234-.371A9.818 9.818 0 1 1 12 21.818z"/></svg>`;
 
     const inp = (val, id, field, w='120px') =>
-      `<input id="pedit-${field}-${id}" value="${(val||'').replace(/"/g,'&quot;')}"
+      `<input id="pedit-${field}-${id}" value="${(String(val??'')).replace(/"/g,'&quot;')}"
         style="width:${w};padding:4px 6px;border:1px solid var(--primary);border-radius:6px;font-size:12px;background:var(--canvas);color:var(--ink)">`;
 
     const addRow = _addingParticipant ? `
@@ -4154,7 +4162,8 @@ function renderDataList() {
                   </td>
                   <td style="padding:4px 6px;white-space:nowrap">
                     <select id="pedit-tsize-${p.id}" style="padding:3px 5px;border:1px solid var(--primary);border-radius:6px;font-size:11px;background:var(--canvas);color:var(--ink)">
-                      <option value="3×3m" ${(p.tent_size||'3×3m')==='3×3m'?'selected':''}>3×3m/4P</option>
+                      <option value="3×3m-2P" ${(p.tent_size==='3×3m'&&p.tent_capacity==2)?'selected':''}>3×3m/2P</option>
+                      <option value="3×3m" ${(p.tent_size==='3×3m'&&p.tent_capacity!=2)?'selected':''}>3×3m/4P</option>
                       <option value="4×4m" ${p.tent_size==='4×4m'?'selected':''}>4×4m/6P</option>
                       <option value="4×6m" ${p.tent_size==='4×6m'?'selected':''}>4×6m/10P</option>
                       <option value="6×6m" ${p.tent_size==='6×6m'?'selected':''}>6×6m/14P</option>
@@ -4617,10 +4626,8 @@ async function saveParticipantEdit(id) {
   const mnames         = document.getElementById(`pedit-mnames-${id}`)?.value.trim() || '';
   const phone          = document.getElementById(`pedit-phone-${id}`)?.value.trim() || '';
   const tent_ownership = document.getElementById(`pedit-town-${id}`)?.value || 'sewa';
-  const rawTSize       = document.getElementById(`pedit-tsize-${id}`)?.value || '3×3m';
-  const { capacity: derivedCap } = tentSizeFromMembers(members);
-  const tent_size     = rawTSize;
-  const tent_capacity = rawTSize === '3×3m' ? 4 : rawTSize === '4×4m' ? 6 : rawTSize === '4×6m' ? 10 : 14;
+  const rawTSize = document.getElementById(`pedit-tsize-${id}`)?.value || '3×3m';
+  const { size: tent_size, capacity: tent_capacity } = parseTentSizeOption(rawTSize);
   if (!name) { toast('Nama tidak boleh kosong', true); return; }
 
   const member_names_arr = mnames ? mnames.split('|').map(s => s.trim()).filter(Boolean) : [];
@@ -4675,7 +4682,8 @@ function openMobileEditParticipant(id) {
       <div>
         <label style="font-size:11px;font-weight:600;color:var(--ink-muted);display:block;margin-bottom:4px">SIZE KAVLING</label>
         <select id="medit-tsize" style="width:100%;padding:9px 12px;border:1px solid var(--hairline);border-radius:8px;font-size:14px;background:var(--canvas);color:var(--ink);box-sizing:border-box">
-          <option value="3×3m" ${(p.tent_size||'3×3m')==='3×3m'?'selected':''}>3×3m / 4P</option>
+          <option value="3×3m-2P" ${(p.tent_size==='3×3m'&&p.tent_capacity==2)?'selected':''}>3×3m / 2P</option>
+          <option value="3×3m" ${(p.tent_size==='3×3m'&&p.tent_capacity!=2)?'selected':''}>3×3m / 4P</option>
           <option value="4×4m" ${p.tent_size==='4×4m'?'selected':''}>4×4m / 6P</option>
           <option value="4×6m" ${p.tent_size==='4×6m'?'selected':''}>4×6m / 10P</option>
           <option value="6×6m" ${p.tent_size==='6×6m'?'selected':''}>6×6m / 14P</option>
@@ -4705,10 +4713,10 @@ async function saveMobileEditParticipant() {
   const phone   = document.getElementById('medit-phone')?.value.trim() || '';
   const mnames  = document.getElementById('medit-mnames')?.value.trim() || '';
   const tent_ownership = document.getElementById('medit-town')?.value || 'sewa';
-  const rawTSize       = document.getElementById('medit-tsize')?.value || '3×3m';
-  const tent_capacity  = rawTSize === '3×3m' ? 4 : rawTSize === '4×4m' ? 6 : rawTSize === '4×6m' ? 10 : 14;
+  const rawTSize = document.getElementById('medit-tsize')?.value || '3×3m';
+  const { size: tent_size, capacity: tent_capacity } = parseTentSizeOption(rawTSize);
   const member_names_arr = mnames ? mnames.split('|').map(s => s.trim()).filter(Boolean) : [];
-  const updates = { family_name: name, members, role, member_names: member_names_arr, code, phone, tent_ownership, tent_size: rawTSize, tent_capacity };
+  const updates = { family_name: name, members, role, member_names: member_names_arr, code, phone, tent_ownership, tent_size, tent_capacity };
   const { error } = await sb.from('participants').update(updates).eq('id', id);
   if (error) { console.error('saveMobileEdit error:', error); toast('Gagal simpan: ' + error.message, true); return; }
   Object.assign(p, { ...updates, member_names: mnames });
