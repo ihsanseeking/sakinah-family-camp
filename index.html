@@ -1961,11 +1961,26 @@ async function doSwap() {
   const bId = document.getElementById('sw-b').value;
   if (aId === bId) { toast('Pilih dua kavling yang berbeda', true); return; }
   const a = tents.find(x=>x.id===aId), b = tents.find(x=>x.id===bId);
-  [a.family,  b.family]  = [b.family,  a.family];
-  [a.members, b.members] = [b.members, a.members];
-  [a.status,  b.status]  = [b.status,  a.status];
-  renderAllTents(); closeOv('m-swap');
+
+  // Swap semua field occupant di tent
+  for (const f of ['family','members','member_names','status','size','capacity','ownership']) {
+    [a[f], b[f]] = [b[f], a[f]];
+  }
+
+  // Swap claimed_tent_id di participants
+  const pA = allParticipants.find(p => p.claimed_tent_id === aId);
+  const pB = allParticipants.find(p => p.claimed_tent_id === bId);
+  if (pA) { pA.claimed_tent_id = bId; await dbUpdateParticipant(pA.id, { claimed_tent_id: bId }); }
+  if (pB) { pB.claimed_tent_id = aId; await dbUpdateParticipant(pB.id, { claimed_tent_id: aId }); }
+
   await dbUpsertTents([a, b]);
+  renderAllTents(); closeOv('m-swap');
+
+  // Refresh data page jika sedang terbuka
+  if (document.getElementById('m-data')?.classList.contains('show')) {
+    allParticipants = await dbLoadAllParticipants();
+    renderDataStats(); renderDataList();
+  }
   toast(`🔄 Swap ${aId} ↔ ${bId} berhasil`);
 }
 
@@ -3925,6 +3940,14 @@ function closeDataPage() {
   document.getElementById('m-data').classList.remove('show');
 }
 
+async function refreshDataPage() {
+  toast('🔄 Memuat ulang data...');
+  allParticipants = await dbLoadAllParticipants();
+  renderDataStats();
+  dataTab === 'kavling' ? renderKavlingList() : renderDataList();
+  toast('✅ Data diperbarui');
+}
+
 function setDataTab(tab) {
   dataTab = tab;
   document.querySelectorAll('.dp-tab').forEach(b => b.classList.remove('on'));
@@ -4027,7 +4050,10 @@ function renderDataList() {
       </tr>` : '';
 
     el.innerHTML = `
-      <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <button onclick="refreshDataPage()" style="padding:6px 12px;border:1px solid var(--hairline);background:transparent;border-radius:8px;font-size:12px;cursor:pointer;color:var(--ink-muted);display:flex;align-items:center;gap:5px">
+          🔄 Refresh Data
+        </button>
         <button onclick="startAddParticipant()"
           style="padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">
           + Tambah Peserta
@@ -4546,11 +4572,17 @@ async function saveParticipantEdit(id) {
   const tent_capacity = rawTSize === '3×3m' ? 4 : rawTSize === '4×4m' ? 6 : rawTSize === '4×6m' ? 10 : 14;
   if (!name) { toast('Nama tidak boleh kosong', true); return; }
 
-  const updates = { family_name: name, members, role, member_names: mnames, code: code || p.code, phone, tent_ownership, tent_size, tent_capacity };
+  const member_names_arr = mnames ? mnames.split('|').map(s => s.trim()).filter(Boolean) : [];
+  const updates = { family_name: name, members, role, member_names: member_names_arr, code: code || p.code, phone, tent_ownership, tent_size, tent_capacity };
   const { error } = await sb.from('participants').update(updates).eq('id', id);
-  if (error) { toast('Gagal simpan: ' + error.message, true); return; }
-  Object.assign(p, updates);
+  if (error) { console.error('saveParticipantEdit error:', error); toast('Gagal simpan: ' + error.message, true); return; }
+  Object.assign(p, { ...updates, member_names: mnames }); // simpan pipe string di memory
   _editingPId = null;
+  // Jika peserta punya kavling, sync ownership/size ke tent
+  if (p.claimed_tent_id) {
+    const t = tents.find(x => x.id === p.claimed_tent_id);
+    if (t) { t.ownership = tent_ownership; t.size = tent_size; t.capacity = tent_capacity; await dbUpsertTent(t); renderAllTents(); }
+  }
   toast(`✅ Data "${name}" disimpan`);
   renderDataStats(); renderDataList();
 }
@@ -4624,10 +4656,15 @@ async function saveMobileEditParticipant() {
   const tent_ownership = document.getElementById('medit-town')?.value || 'sewa';
   const rawTSize       = document.getElementById('medit-tsize')?.value || '3×3m';
   const tent_capacity  = rawTSize === '3×3m' ? 4 : rawTSize === '4×4m' ? 6 : rawTSize === '4×6m' ? 10 : 14;
-  const updates = { family_name: name, members, role, member_names: mnames, code, phone, tent_ownership, tent_size: rawTSize, tent_capacity };
+  const member_names_arr = mnames ? mnames.split('|').map(s => s.trim()).filter(Boolean) : [];
+  const updates = { family_name: name, members, role, member_names: member_names_arr, code, phone, tent_ownership, tent_size: rawTSize, tent_capacity };
   const { error } = await sb.from('participants').update(updates).eq('id', id);
-  if (error) { toast('Gagal simpan: ' + error.message, true); return; }
-  Object.assign(p, updates);
+  if (error) { console.error('saveMobileEdit error:', error); toast('Gagal simpan: ' + error.message, true); return; }
+  Object.assign(p, { ...updates, member_names: mnames });
+  if (p.claimed_tent_id) {
+    const t = tents.find(x => x.id === p.claimed_tent_id);
+    if (t) { t.ownership = tent_ownership; t.size = rawTSize; t.capacity = tent_capacity; await dbUpsertTent(t); renderAllTents(); }
+  }
   closeOv('m-edit-participant');
   toast(`✅ Data "${name}" disimpan`);
   renderDataStats(); renderDataList();
