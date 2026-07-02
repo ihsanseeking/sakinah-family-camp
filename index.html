@@ -412,6 +412,7 @@
     .leaflet-draw-toolbar a { background:var(--surface-1) !important; color:var(--ink) !important; border:1px solid var(--hairline) !important; border-radius:var(--radius-sm) !important; }
     .leaflet-draw-toolbar a:hover { background:var(--surface-2) !important; }
     .leaflet-draw-toolbar .leaflet-draw-draw-polyline { background-position:50% 50% !important; background-size:18px !important; }
+  .tent-lbl { transform: translate(-50%, -50%); white-space:nowrap; pointer-events:none; font-weight:700; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.53); text-align:center; line-height:1; }
   </style>
 </head>
 <body>
@@ -1349,8 +1350,8 @@ function drawTent(t) {
   const pxW = Math.abs(p2.x - p1.x), pxH = Math.abs(p3.y - p1.y);
   const fontSize = Math.max(7, Math.min(Math.round(Math.min(pxW, pxH) * 0.38), 32));
   const labelIcon = L.divIcon({
-    html: `<div style="font-size:${fontSize}px;font-weight:700;color:#fff;text-shadow:0 1px 3px #0008;white-space:nowrap;pointer-events:none;transform:translate(-50%,-50%)">${lbl}</div>`,
-    className: '', iconAnchor: [0, 0]
+    html: `<span style="font-size:${fontSize}px">${lbl}</span>`,
+    className: 'tent-lbl', iconSize: null, iconAnchor: null
   });
   const labelMarker = L.marker([t.lat, t.lon], { icon: labelIcon, interactive: false });
 
