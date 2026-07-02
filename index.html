@@ -126,12 +126,18 @@
     .stat-val { font-size:22px; font-weight:700; letter-spacing:-.5px; color:var(--ink); }
     .stat-lbl { font-size:10px; font-weight:500; color:var(--ink-muted); margin-top:2px; text-transform:uppercase; letter-spacing:.5px; }
 
-    .layer-item { display:flex; align-items:center; gap:7px; padding:6px 8px; border-radius:var(--radius-sm); background:var(--surface-1); margin-bottom:4px; }
+    .layer-item { display:flex; align-items:center; gap:6px; padding:6px 8px; border-radius:var(--radius-sm); margin-bottom:3px; }
+    .layer-item:hover { background:var(--surface-1); }
+    .layer-row { display:flex; align-items:center; gap:7px; }
     .layer-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
-    .layer-lbl { font-size:12px; font-weight:500; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .lbtn { width:26px; height:26px; border:none; background:transparent; cursor:pointer; border-radius:var(--radius-xs); font-size:13px; display:flex; align-items:center; justify-content:center; transition:background .1s; color:var(--ink-muted); }
+    .layer-lbl { font-size:12px; font-weight:500; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; min-width:0; }
+    .layer-full-name { font-size:11px; color:var(--ink-muted); margin-top:5px; padding-left:17px; word-break:break-word; line-height:1.4; }
+    .lbtn { width:24px; height:24px; border:none; background:transparent; cursor:pointer; border-radius:var(--radius-xs); display:flex; align-items:center; justify-content:center; transition:background .1s; color:var(--ink-muted); flex-shrink:0; }
     .lbtn:hover { background:var(--surface-2); }
+    .lbtn.active { color:var(--ink); }
     .lbtn.locked { color:var(--orange); }
+    .draw-tool-btn { width:36px; height:36px; border:1px solid var(--hairline); background:var(--surface-1); border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--ink-muted); transition:all .15s; }
+    .draw-tool-btn:hover, .draw-tool-btn.on { background:var(--primary); border-color:var(--primary); color:#fff; }
 
     .lucide { width:1em; height:1em; stroke-width:2; display:inline-block; vertical-align:middle; flex-shrink:0; }
     .tool-btn { width:100%; padding:8px 10px; border-radius:var(--radius-md); border:1px solid var(--hairline); background:var(--surface-1); color:var(--ink); font-size:12.5px; font-weight:500; cursor:pointer; text-align:left; margin-bottom:4px; display:flex; align-items:center; gap:8px; transition:all .13s; }
@@ -278,10 +284,104 @@
     .toast.err { background:var(--red); }
     @keyframes tIn { from { transform:translateX(110%); opacity:0; } to { transform:translateX(0); opacity:1; } }
 
+    /* ── Mobile Bottom Nav ── */
+    #mobile-nav {
+      display:none; position:fixed; bottom:0; left:0; right:0; height:60px;
+      background:var(--canvas); border-top:1px solid var(--hairline);
+      z-index:1600; align-items:stretch;
+    }
+    .mnav-btn {
+      flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:3px; border:none; background:transparent; color:var(--ink-muted);
+      font-size:10px; font-weight:500; cursor:pointer; padding:6px 0;
+      transition:color .15s;
+    }
+    .mnav-btn .lucide { width:22px; height:22px; stroke-width:1.8; }
+    .mnav-btn.on { color:var(--primary); }
+    .mnav-btn.on .lucide { stroke-width:2.2; }
+
+    /* ── Sidebar Overlay ── */
+    #lsb-overlay {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.4);
+      z-index:1499; backdrop-filter:blur(2px);
+    }
+    #lsb-overlay.show { display:block; }
+
+    /* ── Hamburger (mobile header) ── */
+    #hdr-menu-btn {
+      display:none; width:38px; height:38px; border:none; background:transparent;
+      border-radius:var(--radius-md); cursor:pointer; color:var(--ink-muted);
+      align-items:center; justify-content:center; flex-shrink:0;
+    }
+    #hdr-menu-btn .lucide { width:22px; height:22px; }
+
+    /* ── Drag Handle (RSB mobile) ── */
+    .rsb-drag-h { display:none; width:44px; height:4px; background:var(--surface-2); border-radius:2px; margin:12px auto 4px; flex-shrink:0; }
+
     /* ── Responsive ── */
     @media (max-width:768px) {
-      #lsb { display:none !important; }
-      #rsb { display:none !important; }
+      /* Header */
+      #hdr { height:52px; padding:0 12px; gap:8px; }
+      .hdr-sub { display:none; }
+      .mode-wrap { display:none; }
+      #hdr-menu-btn { display:flex; }
+      .notif-btn { display:flex; }
+
+      /* App */
+      #app { padding-top:52px; padding-bottom:60px; }
+
+      /* Bottom nav */
+      #mobile-nav { display:flex; }
+
+      /* Left sidebar → slide-in drawer */
+      #lsb {
+        position:fixed !important; top:52px; left:0; bottom:60px;
+        z-index:1500; width:270px;
+        transform:translateX(-100%);
+        transition:transform .3s cubic-bezier(.32,.72,0,1);
+        display:flex !important; border-right:1px solid var(--hairline);
+        box-shadow:4px 0 24px rgba(0,0,0,.12);
+      }
+      #lsb.vis { transform:translateX(0); }
+
+      /* Right panel → bottom sheet */
+      #rsb {
+        position:fixed !important; left:0; right:0; bottom:60px; top:auto;
+        width:auto !important; max-height:72vh;
+        border-radius:20px 20px 0 0; border-left:none;
+        border-top:1px solid var(--hairline);
+        transform:translateY(105%);
+        transition:transform .35s cubic-bezier(.32,.72,0,1);
+        display:flex !important; flex-direction:column;
+        box-shadow:0 -4px 30px rgba(0,0,0,.12);
+        overflow-y:auto;
+      }
+      #rsb.vis { transform:translateY(0); }
+      .rsb-drag-h { display:block; }
+
+      /* FABs: above bottom nav */
+      .map-fab { bottom:76px; }
+
+      /* Toast */
+      #toast-w { top:60px; right:12px; left:12px; }
+      .toast { max-width:100%; }
+
+      /* Modals: full-width bottom sheet on mobile */
+      .ov { align-items:flex-end; padding:0; }
+      .modal { border-radius:20px 20px 0 0; max-width:100%; max-height:88vh; padding:20px 16px 32px; }
+      .modal-close { top:14px; right:14px; }
+
+      /* Toolkit */
+      .map-toolkit { top:60px; }
+
+      /* Offline banner */
+      #offline-banner { top:52px; }
+    }
+
+    @media (min-width:769px) {
+      #mobile-nav { display:none !important; }
+      #lsb-overlay { display:none !important; }
+      #hdr-menu-btn { display:none !important; }
     }
 
     /* ── Misc ── */
@@ -324,8 +424,14 @@
 <!-- Toast -->
 <div id="toast-w"></div>
 
+<!-- Sidebar overlay (mobile) -->
+<div id="lsb-overlay" onclick="toggleAdminDrawer(false)"></div>
+
 <!-- ── HEADER ── -->
 <div id="hdr">
+  <button id="hdr-menu-btn" onclick="toggleAdminDrawer()" title="Menu Admin">
+    <i data-lucide="menu" class="lucide"></i>
+  </button>
   <div class="hdr-logo">SFC<br>3</div>
   <div class="hdr-info">
     <div class="hdr-name" id="hdr-name">Sakinah Family Camp #3</div>
@@ -334,13 +440,29 @@
   <div class="mode-wrap">
     <button class="mode-btn on" onclick="setMode('public')"><i data-lucide="eye" class="lucide"></i> Publik</button>
     <button class="mode-btn" id="mode-btn-peserta" onclick="if(participantData) doPesertaLogout(); else setMode('peserta')"><i data-lucide="tent" class="lucide"></i> Peserta</button>
-    <button class="mode-btn"    onclick="setMode('admin')"><i data-lucide="settings" class="lucide"></i> Admin</button>
+    <button class="mode-btn" onclick="setMode('admin')"><i data-lucide="settings" class="lucide"></i> Admin</button>
   </div>
   <button class="notif-btn" id="notif-btn" onclick="openNotif()" title="Laporan Masuk">
     <i data-lucide="bell" class="lucide" style="width:18px;height:18px"></i>
     <span class="notif-badge" id="notif-badge"></span>
   </button>
 </div>
+
+<!-- ── MOBILE BOTTOM NAV ── -->
+<nav id="mobile-nav">
+  <button class="mnav-btn on" id="mnav-public" onclick="setMode('public')">
+    <i data-lucide="map" class="lucide"></i>
+    <span>Peta</span>
+  </button>
+  <button class="mnav-btn" id="mnav-peserta" onclick="if(participantData) doPesertaLogout(); else setMode('peserta')">
+    <i data-lucide="tent" class="lucide"></i>
+    <span id="mnav-peserta-lbl">Peserta</span>
+  </button>
+  <button class="mnav-btn" id="mnav-admin" onclick="setMode('admin')">
+    <i data-lucide="shield" class="lucide"></i>
+    <span>Admin</span>
+  </button>
+</nav>
 
 <!-- ── MAIN ── -->
 <div id="app">
@@ -366,16 +488,41 @@
     </div>
 
     <div class="sb-section">
-      <div class="sb-title">Layer Peta</div>
+      <div class="sb-title">Mode Edit</div>
+      <button class="tool-btn" id="btn-edit-mode" onclick="toggleEditMode()" style="font-weight:600;color:var(--ink-muted)"><i data-lucide="pencil" class="lucide"></i>Mode Edit: <span id="edit-mode-lbl">OFF</span></button>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-title" onclick="toggleLayerList()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none">
+        Layer Peta
+        <span id="layer-list-chevron" style="font-size:10px;transition:transform .2s">▼</span>
+      </div>
       <div id="layer-list"></div>
     </div>
 
     <div class="sb-section">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div class="sb-title" style="margin:0">Overlay Gambar</div>
+        <div class="sb-title" onclick="toggleOvList()" style="cursor:pointer;display:flex;align-items:center;gap:6px;flex:1;user-select:none;margin:0">
+          Overlay Gambar
+          <span id="overlay-list-chevron" style="font-size:10px;transition:transform .2s">▼</span>
+        </div>
         <button onclick="openOverlayModal()" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--primary);background:var(--primary);color:#fff;cursor:pointer;font-weight:600">+ Tambah</button>
       </div>
-      <div id="overlay-list"><div class="muted" style="font-size:11px">Belum ada overlay</div></div>
+      <div id="overlay-list"></div>
+      <button id="btn-align-rot" onclick="alignRotationCenters()" style="width:100%;padding:8px 12px;margin-top:8px;border-radius:6px;border:1px solid var(--hairline);background:var(--surface-1);color:var(--ink);cursor:pointer;font-size:12px;font-weight:500;display:none">⚙️ Samakan Titik Putar</button>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-title">Alat Gambar & Tanda</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="draw-tool-btn" id="btn-draw-area" onclick="toggleDrawArea()" title="Area Kustom"><i data-lucide="hexagon" class="lucide" style="width:16px;height:16px"></i></button>
+        <button class="draw-tool-btn" id="btn-draw-path" onclick="toggleDrawPath()" title="Jalur Setapak"><i data-lucide="footprints" class="lucide" style="width:16px;height:16px"></i></button>
+        <button class="draw-tool-btn" onclick="addSymbolMode('marker')" title="Tambah Marker"><i data-lucide="map-pin" class="lucide" style="width:16px;height:16px"></i></button>
+        <button class="draw-tool-btn" onclick="addSymbolMode('text')" title="Tambah Label Teks"><i data-lucide="type" class="lucide" style="width:16px;height:16px"></i></button>
+        <button class="draw-tool-btn" onclick="addSymbolMode('arrow')" title="Tambah Panah"><i data-lucide="move-up-right" class="lucide" style="width:16px;height:16px"></i></button>
+        <button class="draw-tool-btn" onclick="addSymbolMode('circle')" title="Tambah Lingkaran"><i data-lucide="circle" class="lucide" style="width:16px;height:16px"></i></button>
+      </div>
+      <button class="tool-btn" id="btn-add" onclick="toggleAddMode()" style="justify-content:center"><i data-lucide="tent" class="lucide"></i>Tambah Kavling</button>
     </div>
 
     <div class="sb-section" style="margin-top:auto;border-bottom:none">
@@ -388,11 +535,6 @@
   <div id="map-wrap">
     <div id="map"></div>
 
-    <div class="map-toolkit" id="map-toolkit">
-      <div class="toolkit-item" onclick="openOverlayModal()" title="Overlay Gambar"><i data-lucide="image" class="lucide"></i></div>
-      <div class="toolkit-item" id="btn-draw-path" onclick="toggleDrawPath()" title="Jalur Setapak"><i data-lucide="footprints" class="lucide"></i></div>
-      <div class="toolkit-item" id="btn-draw-area" onclick="toggleDrawArea()" title="Area Kustom"><i data-lucide="hexagon" class="lucide"></i></div>
-    </div>
 
     <div class="map-legend">
       <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>Tersedia</div>
@@ -406,9 +548,15 @@
 
   <!-- Right Detail Panel -->
   <div id="rsb">
-    <div class="dp-hdr">
-      <div class="dp-id" id="dp-id">—</div>
-      <div class="dp-sub" id="dp-badge"></div>
+    <div class="rsb-drag-h"></div>
+    <div class="dp-hdr" style="display:flex;align-items:center;gap:10px">
+      <div style="flex:1">
+        <div class="dp-id" id="dp-id">—</div>
+        <div class="dp-sub" id="dp-badge"></div>
+      </div>
+      <button onclick="document.getElementById('rsb').classList.remove('vis')" style="border:none;background:var(--surface-1);border-radius:50%;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink-muted);flex-shrink:0" title="Tutup">
+        <i data-lucide="x" class="lucide" style="width:16px;height:16px"></i>
+      </button>
     </div>
 
     <div class="dp-sec">
@@ -436,7 +584,8 @@
       <div class="dp-lbl">Kelola Kavling</div>
       <div class="btn-row mt8">
         <button class="btn btn-gh" onclick="openEditModal()"><i data-lucide="pencil" class="lucide"></i> Edit</button>
-        <button class="btn btn-r"  onclick="doResetTent()"><i data-lucide="trash-2" class="lucide"></i> Reset</button>
+        <button class="btn btn-r"  onclick="doResetTent()"><i data-lucide="rotate-ccw" class="lucide"></i> Reset</button>
+        <button class="btn btn-r"  onclick="doDeleteTent()" title="Hapus kavling dari peta"><i data-lucide="trash-2" class="lucide"></i> Hapus</button>
       </div>
       <div class="btn-row mt8">
         <button class="btn btn-gh" onclick="showSwapFromDetail()"><i data-lucide="refresh-cw" class="lucide"></i> Swap</button>
@@ -602,7 +751,7 @@
   <div class="modal">
     <button class="modal-close" onclick="closeOv('m-csv')">✕</button>
     <div class="modal-title"><i data-lucide="download" class="lucide" style="width:20px;height:20px"></i> Import Data Peserta</div>
-    <div class="muted" style="margin-bottom:14px">Upload file CSV/Excel dengan kolom: <b>nama_keluarga, jumlah_anggota, kavling_id</b></div>
+    <div class="muted" style="margin-bottom:14px">Format kolom CSV: <b>kavling_id, nama_keluarga, ukuran, anggota</b><br><span style="font-size:10px">Kolom anggota dipisah tanda | (pipa). Contoh: <code>T-01,Ahmad,4x4m,Siti|Budi|Ani</code></span></div>
     <div class="fg" style="border:2px dashed var(--hairline);border-radius:10px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById('csv-inp').click()">
       <div style="margin-bottom:6px"><i data-lucide="file-text" class="lucide" style="width:36px;height:36px;stroke-width:1.5"></i></div>
       <div style="font-size:13px;font-weight:600">Klik atau seret file CSV di sini</div>
@@ -697,7 +846,6 @@
     <button class="modal-close" onclick="closeOv('m-settings')"><i data-lucide="x" class="lucide"></i></button>
     <div class="modal-title"><i data-lucide="settings" class="lucide" style="width:20px;height:20px"></i> Pengaturan Admin</div>
     <div style="display:flex;flex-direction:column;gap:6px">
-      <button class="tool-btn" id="btn-edit-mode" onclick="closeOv('m-settings');toggleEditMode()" style="font-weight:600;color:var(--ink-muted)"><i data-lucide="pencil" class="lucide"></i>Mode Edit: <span id="edit-mode-lbl">OFF</span></button>
       <button class="tool-btn" id="btn-add" onclick="closeOv('m-settings');toggleAddMode()"><i data-lucide="tent" class="lucide"></i>Tambah Kavling</button>
       <button class="tool-btn" onclick="closeOv('m-settings');importCSV()"><i data-lucide="download" class="lucide"></i>Import CSV Peserta</button>
       <button class="tool-btn" onclick="document.getElementById('gpx-inp').click();closeOv('m-settings')"><i data-lucide="map" class="lucide"></i>Import GPX / KML / KMZ<input type="file" id="gpx-inp" accept=".gpx,.kml,.kmz" style="display:none" onchange="importGeoFile(this)"></button>
@@ -726,12 +874,22 @@ async function dbLoadTents() {
   if (error) { console.error('dbLoadTents:', error); return null; }
   return data;
 }
+function tentDbRow(t) {
+  return {
+    id: t.id, lat: t.lat, lon: t.lon, capacity: t.capacity, size: t.size,
+    type: t.type, facilities: t.facilities, status: t.status,
+    family: t.family || null, members: typeof t.members === 'number' ? t.members : (Array.isArray(t.member_names) ? t.member_names.length : null),
+    member_names: Array.isArray(t.member_names) ? t.member_names : [],
+    rotation: t.rotation || 0, is_collision_checked: t.is_collision_checked || false,
+    updated_at: new Date().toISOString()
+  };
+}
 async function dbUpsertTent(t) {
-  const { error } = await sb.from('tents').upsert({ ...t, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+  const { error } = await sb.from('tents').upsert(tentDbRow(t), { onConflict: 'id' });
   if (error) console.error('dbUpsertTent:', error);
 }
 async function dbUpsertTents(arr) {
-  const { error } = await sb.from('tents').upsert(arr.map(t => ({ ...t, updated_at: new Date().toISOString() })), { onConflict: 'id' });
+  const { error } = await sb.from('tents').upsert(arr.map(tentDbRow), { onConflict: 'id' });
   if (error) console.error('dbUpsertTents:', error);
 }
 async function dbLoadIncidents() {
@@ -775,7 +933,7 @@ async function dbLoadMapLayers() {
 async function dbUpsertMapLayer(l) {
   const { error } = await sb.from('map_layers').upsert({
     id: l.id, type: l.type, name: l.name, color: l.color, coords: l.coords,
-    visible: l.visible, locked: l.locked, updated_at: new Date().toISOString()
+    visible: l.visible, updated_at: new Date().toISOString()
   }, { onConflict: 'id' });
   if (error) console.error('dbUpsertMapLayer:', error);
 }
@@ -870,7 +1028,7 @@ let addMode     = false;
 let editMode    = false;  // global edit mode — tampilkan/sembunyikan semua handles
 let incType     = null;
 let map, tentMarkers = {};
-let mapLayers = [];  // {id,type:'area'|'path',name,color,coords,visible,locked,layer}
+let mapLayers = [];  // {id,type:'area'|'path',name,color,coords,visible,layer} — koordinat, tidak bisa dipindah, jadi tanpa opsi kunci
 let tents     = [];
 let incidents = [];
 
@@ -909,11 +1067,11 @@ function parseSizeM(sz) {
 }
 
 // Convert real-world rect (center lat/lon, w/h meters, rotation degrees) to 4 [lat,lon] corners
-function tentCorners(lat, lon, sz, rotDeg) {
+function tentCorners(lat, lon, sz, rotDeg, margin=1.0) {
   const { w, h } = parseSizeM(sz);
   const LAT_M = 111320;
   const LON_M = 111320 * Math.cos(lat * Math.PI / 180);
-  const hw = w / 2, hh = h / 2;
+  const hw = w / 2 * margin, hh = h / 2 * margin;
   const r  = (rotDeg || 0) * Math.PI / 180;
   const cos = Math.cos(r), sin = Math.sin(r);
   // local offsets (meters): 4 corners
@@ -948,10 +1106,10 @@ function polygonsOverlap(ptsA, ptsB) {
 function checkCollision(tentId) {
   const t = tents.find(x => x.id === tentId);
   if (!t) return false;
-  const myCorners = tentCorners(t.lat, t.lon, t.size, t.rotation || 0);
+  const myCorners = tentCorners(t.lat, t.lon, t.size, t.rotation || 0, 0.70);
   for (const other of tents) {
     if (other.id === tentId || other.type !== 'peserta') continue;
-    const theirCorners = tentCorners(other.lat, other.lon, other.size, other.rotation || 0);
+    const theirCorners = tentCorners(other.lat, other.lon, other.size, other.rotation || 0, 0.70);
     if (polygonsOverlap(myCorners, theirCorners)) {
       return true;
     }
@@ -987,6 +1145,7 @@ async function initMap() {
 
   map.on('zoomend', () => {
     if (mode === 'admin') checkZoomForEditMode();
+    renderAllTents();
   });
 
   POIS.forEach(p => {
@@ -1026,6 +1185,9 @@ async function initMap() {
 
   const modeParam = new URLSearchParams(location.search).get('mode');
   if (modeParam) setTimeout(() => setMode(modeParam), 600);
+
+  // Apply initial mode to sync mobile hamburger + nav state
+  applyMode(mode);
 }
 
 // ══════════════════════════════════════════════
@@ -1047,7 +1209,7 @@ function tentColor(t) {
 function drawTent(t) {
   const corners = tentCorners(t.lat, t.lon, t.size, t.rotation || 0);
   const { fill, stroke } = tentColor(t);
-  const lbl = t.id.replace('T-','').replace('P-','P');
+  const lbl = t.id.replace('-', '');
   const isSelected = t.id === selTentId;
 
   const poly = L.polygon(corners, {
@@ -1058,50 +1220,76 @@ function drawTent(t) {
     interactive: true
   });
 
-  // Label di tengah
+  // Label di tengah — ukuran font dari pixel aktual tenda di layar
+  const { w: tw, h: th } = parseSizeM(t.size);
+  const LON_M_lbl = 111320 * Math.cos(t.lat * Math.PI / 180);
+  const p1 = map.latLngToContainerPoint([t.lat, t.lon]);
+  const p2 = map.latLngToContainerPoint([t.lat, t.lon + tw / LON_M_lbl]);
+  const p3 = map.latLngToContainerPoint([t.lat + th / 111320, t.lon]);
+  const pxW = Math.abs(p2.x - p1.x), pxH = Math.abs(p3.y - p1.y);
+  const fontSize = Math.max(7, Math.min(Math.round(Math.min(pxW, pxH) * 0.38), 32));
   const labelIcon = L.divIcon({
-    html: `<div style="font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 2px #0006;white-space:nowrap;pointer-events:none">${lbl}</div>`,
-    className: '', iconAnchor: [10, 6]
+    html: `<div style="font-size:${fontSize}px;font-weight:700;color:#fff;text-shadow:0 1px 3px #0008;white-space:nowrap;pointer-events:none;transform:translate(-50%,-50%)">${lbl}</div>`,
+    className: '', iconAnchor: [0, 0]
   });
   const labelMarker = L.marker([t.lat, t.lon], { icon: labelIcon, interactive: false });
 
-  // Drag handle — hanya tampil saat editMode ON (admin only)
-  let dragMarker = null;
+  // Drag langsung di polygon — hanya aktif saat editMode admin
+  let dragOrigLat = t.lat, dragOrigLon = t.lon;
+  let isDragging = false, dragStart = null;
+
   if (mode === 'admin') {
-    const handleIcon = L.divIcon({
-      html: `<div style="width:18px;height:18px;background:rgba(255,255,255,0.92);border:2px solid #444;border-radius:4px;cursor:move;display:flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 1px 4px #0005;user-select:none">✛</div>`,
-      className: '', iconSize:[18,18], iconAnchor:[9,9]
+    poly.on('mousedown touchstart', e => {
+      if (!editMode) return;
+      L.DomEvent.stop(e);
+      isDragging = true;
+      dragOrigLat = t.lat; dragOrigLon = t.lon;
+      const pt = e.touches ? e.touches[0] : e.originalEvent;
+      dragStart = map.mouseEventToLatLng(pt);
+      map.dragging.disable();
+      poly.getElement()?.style && (poly.getElement().style.cursor = 'grabbing');
     });
-    let dragOrigLat = t.lat, dragOrigLon = t.lon;
-    dragMarker = L.marker([t.lat, t.lon], { icon: handleIcon, draggable: true, zIndexOffset: 300 });
-    dragMarker.on('dragstart', () => { dragOrigLat = t.lat; dragOrigLon = t.lon; });
-    dragMarker.on('drag', e => {
-      const ll = e.target.getLatLng();
-      poly.setLatLngs(tentCorners(ll.lat, ll.lng, t.size, t.rotation || 0));
-      labelMarker.setLatLng(ll);
-    });
-    dragMarker.on('dragend', e => {
-      const ll = e.target.getLatLng();
-      t.lat = ll.lat; t.lon = ll.lng;
+
+    const onPolyMove = e => {
+      if (!isDragging) return;
+      const pt = e.touches ? e.touches[0] : e;
+      const cur = map.mouseEventToLatLng(pt);
+      const dLat = cur.lat - dragStart.lat, dLon = cur.lng - dragStart.lng;
+      dragStart = cur;
+      t.lat += dLat; t.lon += dLon;
+      poly.setLatLngs(tentCorners(t.lat, t.lon, t.size, t.rotation || 0));
+      labelMarker.setLatLng([t.lat, t.lon]);
+    };
+    const onPolyEnd = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      map.dragging.enable();
+      poly.getElement()?.style && (poly.getElement().style.cursor = '');
       if (checkCollision(t.id)) {
         t.lat = dragOrigLat; t.lon = dragOrigLon;
         renderAllTents();
-        toast('⚠️ Tabrakan! Kavling dikembalikan ke posisi semula.', true);
+        toast('⚠️ Tabrakan! Kavling dikembalikan.', true);
         return;
       }
       dbUpsertTent(t);
-    });
-    if (editMode) dragMarker.addTo(map); // hanya tambah ke map jika editMode ON
+    };
+    document.addEventListener('mousemove', onPolyMove);
+    document.addEventListener('touchmove', onPolyMove, { passive: true });
+    document.addEventListener('mouseup', onPolyEnd);
+    document.addEventListener('touchend', onPolyEnd);
+    document.addEventListener('touchcancel', onPolyEnd);
   }
 
   poly.on('click', () => selectTent(t.id));
   poly.addTo(map);
   labelMarker.addTo(map);
 
-  tentMarkers[t.id] = { poly, labelMarker, dragMarker,
-    remove()      { poly.remove(); labelMarker.remove(); if (dragMarker) dragMarker.remove(); },
-    showHandle()  { if (dragMarker && !map.hasLayer(dragMarker)) dragMarker.addTo(map); },
-    hideHandle()  { if (dragMarker && map.hasLayer(dragMarker))  dragMarker.remove(); }
+  tentMarkers[t.id] = { poly, labelMarker, dragMarker: null,
+    remove() {
+      poly.remove(); labelMarker.remove();
+    },
+    showHandle() {},
+    hideHandle() {}
   };
 }
 
@@ -1141,8 +1329,19 @@ function showDetailPanel(t) {
   document.getElementById('dp-cap').textContent = t.capacity + 'P';
   document.getElementById('dp-sz').textContent  = t.size;
   document.getElementById('dp-fac').textContent = t.facilities;
-  document.getElementById('dp-fam').textContent = (mode === 'public' && t.status === 'occupied') ? 'Terisi' : (t.family || '—');
-  document.getElementById('dp-mem').textContent = (mode === 'public' && t.status === 'occupied') ? '' : (t.members ? t.members + ' anggota' : '—');
+  const isPrivate = mode === 'public' && t.status === 'occupied';
+  document.getElementById('dp-fam').textContent = isPrivate ? 'Terisi' : (t.family || '—');
+  const names = Array.isArray(t.member_names) ? t.member_names : [];
+  const memCount = names.length || (typeof t.members === 'number' ? t.members : 0);
+  if (isPrivate) {
+    document.getElementById('dp-mem').innerHTML = '';
+  } else if (names.length) {
+    document.getElementById('dp-mem').innerHTML =
+      `<div style="font-size:11px;color:var(--ink-muted);margin-top:2px">${memCount} anggota:</div>` +
+      names.map(n => `<div style="font-size:12px;padding:2px 0;border-bottom:1px solid var(--hairline)">• ${n}</div>`).join('');
+  } else {
+    document.getElementById('dp-mem').textContent = memCount ? memCount + ' anggota' : '—';
+  }
 
   const b = document.getElementById('dp-badge');
   if (t.type === 'panitia')       b.innerHTML = '<span class="badge badge-b">● Panitia</span>';
@@ -1215,6 +1414,22 @@ async function doResetTent() {
   }
 }
 
+async function doDeleteTent() {
+  if (!selTentId || !confirm(`Hapus kavling ${selTentId} dari peta? Tindakan ini tidak bisa dibatalkan.`)) return;
+  const idx = tents.findIndex(x => x.id === selTentId);
+  if (idx === -1) return;
+  const id = selTentId;
+  tentMarkers[id]?.remove();
+  delete tentMarkers[id];
+  tents.splice(idx, 1);
+  selTentId = null;
+  document.getElementById('rsb').classList.remove('vis');
+  updateStats();
+  const { error } = await sb.from('tents').delete().eq('id', id);
+  if (error) console.error('doDeleteTent:', error);
+  toast(`Kavling ${id} dihapus dari peta`);
+}
+
 async function doResetAll() {
   if (!confirm('Reset SEMUA kavling peserta? Data akan dihapus permanen!')) return;
   const toReset = tents.filter(t => t.type !== 'panitia');
@@ -1236,7 +1451,7 @@ async function rotateTent(delta, cmd) {
   drawTent(t);
   if (checkCollision(t.id)) {
     t.rotation = oldRot;
-    if (g) g.remove();
+    tentMarkers[t.id]?.remove();
     drawTent(t);
     toast('⚠️ Rotasi menyebabkan tabrakan!', true);
     return;
@@ -1328,12 +1543,13 @@ function toggleEditMode() {
   lbl.textContent = editMode ? 'ON' : 'OFF';
   btn.classList.toggle('on', editMode);
   btn.style.color = editMode ? 'var(--on-primary)' : 'var(--ink-muted)';
+  document.getElementById('btn-align-rot').style.display = editMode && overlays.length > 1 ? 'block' : 'none';
   renderAllTents();
   Object.values(overlays).forEach(ov => {
     if (ov.handles && editMode) ov.handles.forEach(h => h.addTo(map));
     else if (ov.handles) ov.handles.forEach(h => h.remove());
   });
-  toast(editMode ? 'Mode Edit aktif — seret ✛ untuk pindah kavling' : 'Mode Edit dimatikan');
+  toast(editMode ? 'Mode Edit aktif — drag gambar/tenda untuk pindahkan' : 'Mode Edit dimatikan');
 }
 
 function checkZoomForEditMode() {
@@ -1348,6 +1564,7 @@ function checkZoomForEditMode() {
     btn.classList.toggle('on', editMode);
     btn.style.color = editMode ? 'var(--on-primary)' : 'var(--ink-muted)';
   }
+  document.getElementById('btn-align-rot').style.display = editMode && overlays.length > 1 ? 'block' : 'none';
   renderAllTents();
   overlays.forEach(ov => {
     if (ov.handles && editMode && !ov.locked) ov.handles.forEach(h => h.addTo(map));
@@ -1368,11 +1585,6 @@ const HANDLE_ICON = () => L.divIcon({
   html: `<div style="width:14px;height:14px;background:#fff;border:2.5px solid #111;border-radius:50%;cursor:crosshair;box-shadow:0 1px 4px #0005"></div>`,
   className:'', iconSize:[14,14], iconAnchor:[7,7]
 });
-const MOVE_ICON = () => L.divIcon({
-  html: `<div style="width:18px;height:18px;background:rgba(255,255,255,0.9);border:2px solid #111;border-radius:4px;cursor:move;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 1px 4px #0005">✛</div>`,
-  className:'', iconSize:[18,18], iconAnchor:[9,9]
-});
-
 // Hitung bounds (latN,latS,lonW,lonE) dari tengah peta + aspect ratio gambar
 function boundsForImage(natW, natH) {
   const b    = map.getBounds();
@@ -1390,128 +1602,164 @@ function boundsForImage(natW, natH) {
 function ROTATE_ICON() {
   return L.divIcon({ html: `<div style="width:22px;height:22px;background:rgba(255,255,255,0.95);border:2px solid #2196f3;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:grab;box-shadow:0 1px 4px #0005;user-select:none">🔄</div>`, className:'', iconSize:[22,22], iconAnchor:[11,11] });
 }
+function PIVOT_ICON() {
+  return L.divIcon({
+    className:'',
+    html:`<div title="Titik Putar — drag untuk pindahkan" style="width:20px;height:20px;cursor:crosshair;position:relative;">
+      <div style="position:absolute;inset:0;border:2px solid #ff6b35;border-radius:50%;background:rgba(255,107,53,.15);pointer-events:none;"></div>
+      <div style="position:absolute;top:50%;left:2px;right:2px;height:1.5px;background:#ff6b35;transform:translateY(-50%);pointer-events:none;"></div>
+      <div style="position:absolute;left:50%;top:2px;bottom:2px;width:1.5px;background:#ff6b35;transform:translateX(-50%);pointer-events:none;"></div>
+    </div>`,
+    iconSize:[20,20], iconAnchor:[10,10]
+  });
+}
 
 function createOverlayGroup(id, url, opacity, latN, latS, lonW, lonE, initRotation) {
-  const imgLayer = L.imageOverlay(url, [[latS,lonW],[latN,lonE]], { opacity: opacity/100, interactive: false });
+  const LAT_M = 111320;
+  const getLonM = lat => 111320 * Math.cos(lat * Math.PI / 180);
 
-  const hNW = L.marker([latN,lonW], { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
-  const hNE = L.marker([latN,lonE], { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
-  const hSW = L.marker([latS,lonW], { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
-  const hSE = L.marker([latS,lonE], { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
-  const hCenter = L.marker([(latN+latS)/2,(lonW+lonE)/2], { icon:MOVE_ICON(), draggable:true, zIndexOffset:1000 });
+  let rot = ((initRotation || 0) % 360 + 360) % 360;
+  let cLat = (latN + latS) / 2, cLon = (lonW + lonE) / 2;
+  let hw = Math.abs(lonE - lonW) / 2 * getLonM(cLat), hh = Math.abs(latN - latS) / 2 * LAT_M;
 
-  let rot = initRotation || 0;
-  const state = { latN, latS, lonW, lonE };
+  const state = {};
+  function syncBbox() {
+    const LM = getLonM(cLat);
+    state.latN = cLat + hh / LAT_M;
+    state.latS = cLat - hh / LAT_M;
+    state.lonW = cLon - hw / LM;
+    state.lonE = cLon + hw / LM;
+  }
+  syncBbox();
 
-  // Posisi handle rotasi: di atas center, jarak tetap dalam meter
-  function rotHandleLatLng() {
-    const cLat = (state.latN + state.latS) / 2;
-    const cLon = (state.lonW + state.lonE) / 2;
-    const LAT_M = 111320;
-    const LON_M = 111320 * Math.cos(cLat * Math.PI / 180);
-    const r     = rot * Math.PI / 180;
-    const dist  = Math.max(Math.abs(state.latN-state.latS)*LAT_M, Math.abs(state.lonE-state.lonW)*LON_M) * 0.5 + 20;
-    return [cLat + (dist * Math.cos(r)) / LAT_M, cLon + (dist * Math.sin(r)) / LON_M];
+  function rpt(dx, dy) {
+    const r = rot * Math.PI / 180;
+    const ex = dx * Math.cos(r) - dy * Math.sin(r);
+    const sy = dx * Math.sin(r) + dy * Math.cos(r);
+    const LM = getLonM(cLat);
+    return [cLat - sy / LAT_M, cLon + ex / LM];
   }
 
-  const hRotate = L.marker(rotHandleLatLng(), { icon:ROTATE_ICON(), draggable:true, zIndexOffset:1100 });
+  function toLocal(lat, lon) {
+    const LM = getLonM(cLat);
+    const ex = (lon - cLon) * LM;
+    const sy = -(lat - cLat) * LAT_M;
+    const r = -rot * Math.PI / 180;
+    return { dx: ex * Math.cos(r) - sy * Math.sin(r), dy: ex * Math.sin(r) + sy * Math.cos(r) };
+  }
 
-  // Patch _reset agar append rotate() ke transform yang sudah di-set Leaflet
+  const imgLayer = L.imageOverlay(url, [[state.latS,state.lonW],[state.latN,state.lonE]], { opacity: opacity/100, interactive: true });
   const _origReset = imgLayer._reset.bind(imgLayer);
   imgLayer._reset = function() {
     _origReset();
     const el = this.getElement();
-    if (el && rot !== 0) {
-      const cur = el.style.transform || '';
-      el.style.transform = cur.replace(/\s*rotate\([^)]*\)/, '') + ` rotate(${rot}deg)`;
-    }
+    if (!el) return;
+    el.style.transformOrigin = 'center center'; // Leaflet sets 0 0 by default — override to pivot around image center
+    if (rot !== 0) el.style.transform = (el.style.transform || '').replace(/\s*rotate\([^)]*\)/, '') + ` rotate(${rot}deg)`;
   };
 
-  function applyRotation(deg) {
-    rot = ((deg % 360) + 360) % 360;
-    imgLayer._reset();
-    hRotate.setLatLng(rotHandleLatLng());
-    const ov = overlays.find(o => o.id === id);
-    if (ov) { ov.rotation = rot; }
-  }
+  const posNW = () => rpt(-hw, -hh);
+  const posNE = () => rpt(+hw, -hh);
+  const posSW = () => rpt(-hw, +hh);
+  const posSE = () => rpt(+hw, +hh);
+
+  const hNW = L.marker(posNW(), { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
+  const hNE = L.marker(posNE(), { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
+  const hSW = L.marker(posSW(), { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
+  const hSE = L.marker(posSE(), { icon:HANDLE_ICON(), draggable:true, zIndexOffset:1000 });
+  const hRotate = L.marker(rpt(0, -(hh + 24)), { icon:ROTATE_ICON(), draggable:true, zIndexOffset:1100 });
+  const rotStem = L.polyline([rpt(0, -hh), rpt(0, -(hh + 24))], { color:'#2196f3', weight:1.5, dashArray:'3,4', interactive:false });
 
   function refresh() {
-    imgLayer.setBounds([[state.latS,state.lonW],[state.latN,state.lonE]]);
-    hNW.setLatLng([state.latN, state.lonW]);
-    hNE.setLatLng([state.latN, state.lonE]);
-    hSW.setLatLng([state.latS, state.lonW]);
-    hSE.setLatLng([state.latS, state.lonE]);
-    hCenter.setLatLng([(state.latN+state.latS)/2, (state.lonW+state.lonE)/2]);
-    hRotate.setLatLng(rotHandleLatLng());
+    syncBbox();
+    imgLayer.setBounds([[state.latS, state.lonW], [state.latN, state.lonE]]);
+    hNW.setLatLng(posNW()); hNE.setLatLng(posNE());
+    hSW.setLatLng(posSW()); hSE.setLatLng(posSE());
+    hRotate.setLatLng(rpt(0, -(hh + 24)));
+    rotStem.setLatLngs([rpt(0, -hh), rpt(0, -(hh + 24))]);
     imgLayer._reset();
   }
 
-  // Terapkan aspect ratio jika locked — gunakan lon sebagai acuan lebar
-  function applyAspect(anchorLatS, anchorLonE) {
-    const ov = overlays.find(o => o.id === id);
-    if (!ov?.lockAspect || !ov.natW || !ov.natH) return;
-    const cLat  = (state.latN + state.latS) / 2;
-    const LON_M = 111320 * Math.cos(cLat * Math.PI / 180);
-    const LAT_M = 111320;
-    const wM    = Math.abs(state.lonE - state.lonW) * LON_M;
-    const hM    = wM * (ov.natH / ov.natW);
-    state.latN  = (anchorLatS ?? state.latS) + hM / LAT_M;
+  function cornerDrag(nLat, nLon, fLat, fLon) {
+    cLat = (fLat + nLat) / 2; cLon = (fLon + nLon) / 2;
+    const { dx, dy } = toLocal(nLat, nLon);
+    hw = Math.max(1, Math.abs(dx));
+    hh = Math.max(1, Math.abs(dy));
   }
 
-  hNW.on('drag', e => {
-    state.latN = e.latlng.lat; state.lonW = e.latlng.lng;
-    applyAspect(state.latS, state.lonE);
-    refresh();
-  });
-  hNE.on('drag', e => {
-    state.latN = e.latlng.lat; state.lonE = e.latlng.lng;
-    applyAspect(state.latS, state.lonW);
-    refresh();
-  });
-  hSW.on('drag', e => {
-    state.latS = e.latlng.lat; state.lonW = e.latlng.lng;
-    // aspect: fix latN, adjust latS berdasarkan lebar baru
+  function applyAspect() {
     const ov = overlays.find(o => o.id === id);
-    if (ov?.lockAspect && ov.natW && ov.natH) {
-      const LON_M = 111320 * Math.cos(state.latN * Math.PI / 180);
-      const wM    = Math.abs(state.lonE - state.lonW) * LON_M;
-      state.latS  = state.latN - wM * (ov.natH / ov.natW) / 111320;
-    }
-    refresh();
-  });
-  hSE.on('drag', e => {
-    state.latS = e.latlng.lat; state.lonE = e.latlng.lng;
-    const ov = overlays.find(o => o.id === id);
-    if (ov?.lockAspect && ov.natW && ov.natH) {
-      const LON_M = 111320 * Math.cos(state.latN * Math.PI / 180);
-      const wM    = Math.abs(state.lonE - state.lonW) * LON_M;
-      state.latS  = state.latN - wM * (ov.natH / ov.natW) / 111320;
-    }
-    refresh();
-  });
-  hCenter.on('drag', e => {
-    const dLat = e.latlng.lat - (state.latN+state.latS)/2;
-    const dLon = e.latlng.lng - (state.lonW+state.lonE)/2;
-    state.latN+=dLat; state.latS+=dLat; state.lonW+=dLon; state.lonE+=dLon;
-    refresh();
-  });
+    if (ov?.lockAspect && ov.natW && ov.natH) hh = hw * (ov.natH / ov.natW);
+  }
 
-  // Rotasi: hitung sudut center → posisi handle
+  hNW.on('drag', e => { const [f0, f1] = posSE(); cornerDrag(e.latlng.lat, e.latlng.lng, f0, f1); applyAspect(); refresh(); });
+  hNE.on('drag', e => { const [f0, f1] = posSW(); cornerDrag(e.latlng.lat, e.latlng.lng, f0, f1); applyAspect(); refresh(); });
+  hSW.on('drag', e => { const [f0, f1] = posNE(); cornerDrag(e.latlng.lat, e.latlng.lng, f0, f1); applyAspect(); refresh(); });
+  hSE.on('drag', e => { const [f0, f1] = posNW(); cornerDrag(e.latlng.lat, e.latlng.lng, f0, f1); applyAspect(); refresh(); });
+
   hRotate.on('drag', e => {
-    const cLat=(state.latN+state.latS)/2, cLon=(state.lonW+state.lonE)/2;
-    const LON_M=111320*Math.cos(cLat*Math.PI/180), LAT_M=111320;
-    const dy=(e.latlng.lat-cLat)*LAT_M, dx=(e.latlng.lng-cLon)*LON_M;
-    const deg = Math.atan2(dx, dy) * 180 / Math.PI;
-    applyRotation(deg);
+    const LM = getLonM(cLat);
+    const dx = (e.latlng.lng - cLon) * LM;
+    const dy = (e.latlng.lat - cLat) * LAT_M; // positive = north = up in screen → atan2 gives CW angle from top
+    rot = ((Math.atan2(dx, dy) * 180 / Math.PI) % 360 + 360) % 360;
+    syncBbox();
+    imgLayer.setBounds([[state.latS, state.lonW], [state.latN, state.lonE]]);
+    refresh();
+    const ov = overlays.find(o => o.id === id);
+    if (ov) ov.rotation = rot;
   });
 
-  [hNW,hNE,hSW,hSE,hCenter,hRotate].forEach(h => h.on('dragend', () => {
+  let imgDragging = false, imgDragStart = null;
+  const isLocked = () => overlays.find(o => o.id === id)?.locked;
+  const onImgDragStart = e => {
+    if (!editMode || isLocked() || addMode) return;
+    L.DomEvent.stop(e);
+    imgDragging = true;
+    imgDragStart = map.mouseEventToLatLng(e.touches ? e.touches[0] : e);
+    map.dragging.disable();
+  };
+  const onImgDragMove = e => {
+    if (!imgDragging) return;
+    const cur = map.mouseEventToLatLng(e.touches ? e.touches[0] : e);
+    cLat += cur.lat - imgDragStart.lat;
+    cLon += cur.lng - imgDragStart.lng;
+    imgDragStart = cur;
+    refresh();
+  };
+  const onImgDragEnd = () => {
+    if (!imgDragging) return;
+    imgDragging = false;
+    map.dragging.enable();
     const ov = overlays.find(o => o.id === id);
-    if (ov) { Object.assign(ov, state); ov.rotation=rot; dbUpsertOverlay(ov); }
+    if (ov) { Object.assign(ov, state); dbUpsertOverlay(ov); }
+  };
+
+  imgLayer.once('add', () => {
+    const el = imgLayer.getElement();
+    if (el) {
+      el.style.cursor = 'move';
+      L.DomEvent.on(el, 'mousedown touchstart', onImgDragStart);
+      L.DomEvent.on(document, 'mousemove touchmove', onImgDragMove);
+      L.DomEvent.on(document, 'mouseup touchend touchcancel', onImgDragEnd);
+      L.DomEvent.on(window, 'blur', onImgDragEnd);
+    }
+  });
+
+  const destroyDrag = () => {
+    const el = imgLayer.getElement();
+    if (el) L.DomEvent.off(el, 'mousedown touchstart', onImgDragStart);
+    L.DomEvent.off(document, 'mousemove touchmove', onImgDragMove);
+    L.DomEvent.off(document, 'mouseup touchend touchcancel', onImgDragEnd);
+    L.DomEvent.off(window, 'blur', onImgDragEnd);
+  };
+
+  [hNW, hNE, hSW, hSE, hRotate].forEach(h => h.on('dragend', () => {
+    syncBbox();
+    const ov = overlays.find(o => o.id === id);
+    if (ov) { Object.assign(ov, state); ov.rotation = rot; dbUpsertOverlay(ov); }
   }));
 
-  const handles = [hNW,hNE,hSW,hSE,hCenter,hRotate];
-  return { imgLayer, handles, state, getRotation:()=>rot, applyRotation };
+  return { imgLayer, handles: [hNW, hNE, hSW, hSE, hRotate, rotStem], state, getRotation: ()=>rot, applyRotation: deg => { rot = ((deg%360)+360)%360; refresh(); const ov = overlays.find(o => o.id === id); if (ov) ov.rotation = rot; }, destroyDrag, getPivot: ()=>({lat:cLat, lng:cLon}), setPivot: (lat,lon)=>{ cLat=lat; cLon=lon; refresh(); } };
 }
 
 // ── Supabase Storage for Overlays ──
@@ -1617,10 +1865,10 @@ async function applyImageOverlay() {
       if (result) { url = result.url; storagePath = result.path; }
     }
 
-    const { imgLayer, handles, state, getRotation, applyRotation } = createOverlayGroup(id, url, opacity, latN, latS, lonW, lonE, 0);
+    const { imgLayer, handles, state, getRotation, applyRotation, destroyDrag } = createOverlayGroup(id, url, opacity, latN, latS, lonW, lonE, 0);
     imgLayer.addTo(map);
     if (editMode) handles.forEach(h => h.addTo(map));
-    const newOv = { id, name, url, imgLayer, handles, visible:true, opacity, natW:_ovPendingW, natH:_ovPendingH, lockAspect:true, locked:false, rotation:0, getRotation, applyRotation, storagePath, ...state };
+    const newOv = { id, name, url, imgLayer, handles, visible:true, opacity, natW:_ovPendingW, natH:_ovPendingH, lockAspect:true, locked:false, rotation:0, getRotation, applyRotation, destroyDrag, storagePath, ...state };
     overlays.push(newOv);
     await dbUpsertOverlay(newOv);
   }
@@ -1647,6 +1895,7 @@ async function deleteOverlay(id) {
   if (!confirm('Hapus overlay ini?')) return;
   const idx = overlays.findIndex(o => o.id === id); if (idx===-1) return;
   overlays[idx].imgLayer.remove(); overlays[idx].handles.forEach(h => h.remove());
+  overlays[idx].destroyDrag?.();
   if (overlays[idx].storagePath) await deleteOverlayFromStorage(overlays[idx].storagePath);
   overlays.splice(idx,1);
   await dbDeleteOverlay(id);
@@ -1663,13 +1912,13 @@ function renderOverlayList() {
   if (!overlays.length) { el.innerHTML = '<div class="muted" style="font-size:11px">Belum ada overlay</div>'; return; }
   el.innerHTML = overlays.map(ov => `
     <div style="background:var(--surface-1);border-radius:8px;padding:7px 9px;margin-bottom:5px;border:1px solid ${ov.locked?'var(--orange)':'transparent'}">
-      <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px">
         <i data-lucide="image" class="lucide" style="width:14px;height:14px;flex-shrink:0;color:var(--ink-muted)"></i>
         <span style="font-size:11px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ov.name}</span>
-        <button onclick="toggleOverlay('${ov.id}')" style="border:none;background:none;cursor:pointer;padding:2px;opacity:${ov.visible?1:.4}" title="Tampilkan/Sembunyikan"><i data-lucide="eye" class="lucide" style="width:14px;height:14px;display:block"></i></button>
-        <button onclick="toggleOverlayLock('${ov.id}')" style="border:none;background:none;cursor:pointer;padding:2px;color:${ov.locked?'var(--orange)':'var(--ink-muted)'}" title="${ov.locked?'Buka kunci':'Kunci posisi'}"><i data-lucide="${ov.locked?'lock':'lock-open'}" class="lucide" style="width:14px;height:14px;display:block"></i></button>
-        <button onclick="openOverlayModal('${ov.id}')" style="border:none;background:none;cursor:pointer;padding:2px" title="Edit"><i data-lucide="pencil" class="lucide" style="width:14px;height:14px;display:block"></i></button>
-        <button onclick="deleteOverlay('${ov.id}')" style="border:none;background:none;cursor:pointer;padding:2px" title="Hapus"><i data-lucide="trash-2" class="lucide" style="width:14px;height:14px;display:block"></i></button>
+        <button class="lbtn ${ov.visible?'active':''}" onclick="toggleOverlay('${ov.id}')" title="${ov.visible?'Sembunyikan':'Tampilkan'}"><i data-lucide="eye${ov.visible?'':'-off'}" class="lucide" style="width:13px;height:13px"></i></button>
+        <button class="lbtn ${ov.locked?'locked':''}" onclick="toggleOverlayLock('${ov.id}')" title="${ov.locked?'Buka kunci':'Kunci'}"><i data-lucide="${ov.locked?'lock':'lock-open'}" class="lucide" style="width:13px;height:13px"></i></button>
+        <button class="lbtn" onclick="openOverlayModal('${ov.id}')" title="Edit"><i data-lucide="pencil" class="lucide" style="width:13px;height:13px"></i></button>
+        <button class="lbtn" onclick="deleteOverlay('${ov.id}')" title="Hapus"><i data-lucide="trash-2" class="lucide" style="width:13px;height:13px"></i></button>
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
         <span style="font-size:10px;color:var(--ink-muted);width:28px">${ov.opacity}%</span>
@@ -1680,11 +1929,16 @@ function renderOverlayList() {
         <input type="range" min="-180" max="180" value="${Math.round(ov.rotation||0)}" style="flex:1;height:3px" oninput="setOverlayRotation('${ov.id}',+this.value);this.previousElementSibling.textContent=this.value+'°'">
       </div>
       <label style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--ink-muted);cursor:pointer;user-select:none">
-        <input type="checkbox" ${ov.lockAspect?'checked':''} onchange="toggleOverlayAspect('${ov.id}',this.checked)" style="width:12px;height:12px">
-        Kunci rasio gambar
+        <input type="checkbox" ${ov.lockAspect?'checked':''} onchange="toggleOverlayAspect('${ov.id}',this.checked)" style="width:12px;height:12px"> Kunci rasio gambar
       </label>
     </div>`).join('');
   lucide.createIcons();
+}
+
+const expandedOvIds = new Set();
+function toggleOvExpand(id) {
+  if (expandedOvIds.has(id)) expandedOvIds.delete(id); else expandedOvIds.add(id);
+  renderOverlayList();
 }
 
 function toggleOverlayLock(id) {
@@ -1710,6 +1964,18 @@ function toggleOverlayAspect(id, val) {
   dbUpsertOverlay(ov);
 }
 
+function alignRotationCenters() {
+  if (overlays.length < 2) { toast('Perlu minimal 2 overlay'); return; }
+  const avgLat = overlays.reduce((sum, ov) => sum + ov.latN + ov.latS, 0) / (overlays.length * 2);
+  const avgLon = overlays.reduce((sum, ov) => sum + ov.lonE + ov.lonW, 0) / (overlays.length * 2);
+  overlays.forEach(ov => {
+    if (ov.setPivot) ov.setPivot(avgLat, avgLon);
+    ov.pivotLat = avgLat; ov.pivotLon = avgLon;
+    dbUpsertOverlay(ov);
+  });
+  toast('Titik putar semua overlay disamakan ke pusat');
+}
+
 function removeOverlayLocal(id) {
   const idx = overlays.findIndex(o => o.id === id); if (idx === -1) return;
   overlays[idx].imgLayer.remove(); overlays[idx].handles.forEach(h => h.remove());
@@ -1719,8 +1985,8 @@ function removeOverlayLocal(id) {
 
 function addOverlayFromRow(d) {
   if (!d.url) return;
-  const { imgLayer, handles, state, getRotation, applyRotation } = createOverlayGroup(d.id, d.url, d.opacity||70, d.lat_n, d.lat_s, d.lon_w, d.lon_e, d.rotation||0);
-  const ov = { id:d.id, name:d.name, url:d.url, imgLayer, handles, visible:d.visible!==false, opacity:d.opacity||70, natW:d.nat_w, natH:d.nat_h, lockAspect:d.lock_aspect!==false, locked:d.locked||false, rotation:d.rotation||0, getRotation, applyRotation, storagePath:d.storage_path||null, latN:d.lat_n, latS:d.lat_s, lonW:d.lon_w, lonE:d.lon_e };
+  const { imgLayer, handles, state, getRotation, applyRotation, destroyDrag } = createOverlayGroup(d.id, d.url, d.opacity||70, d.lat_n, d.lat_s, d.lon_w, d.lon_e, d.rotation||0);
+  const ov = { id:d.id, name:d.name, url:d.url, imgLayer, handles, visible:d.visible!==false, opacity:d.opacity||70, natW:d.nat_w, natH:d.nat_h, lockAspect:d.lock_aspect!==false, locked:d.locked||false, rotation:d.rotation||0, getRotation, applyRotation, destroyDrag, storagePath:d.storage_path||null, latN:d.lat_n, latS:d.lat_s, lonW:d.lon_w, lonE:d.lon_e };
   if (ov.visible) { imgLayer.addTo(map); if (editMode && !ov.locked) handles.forEach(h => h.addTo(map)); }
   overlays.push(ov);
   renderOverlayList();
@@ -1782,7 +2048,7 @@ async function commitNewMapLayer(type, coordsLatLng, defaultName) {
   const l = {
     id: type + '_' + Date.now(), type, name: defaultName,
     color: type === 'area' ? color : PATH_COLOR,
-    coords: coordsLatLng, visible: true, locked: false, layer: null
+    coords: coordsLatLng, visible: true, layer: null
   };
   renderMapLayerShape(l);
   mapLayers.push(l);
@@ -1855,6 +2121,103 @@ function toggleAddMode() {
   if (addMode) toast('Klik di peta untuk menempatkan kavling baru');
 }
 
+// ── Annotation / Symbol tools ─────────────────────────────────────
+let _symbolMode = null, _symbolHandler = null;
+
+function addSymbolMode(type) {
+  // toggle off if same type clicked again
+  if (_symbolMode === type) { cancelSymbolMode(); return; }
+  cancelSymbolMode();
+  _symbolMode = type;
+  document.querySelectorAll('.draw-tool-btn').forEach(b => b.classList.remove('on'));
+  const btnMap = { marker: 0, text: 1, arrow: 2, circle: 3 };
+  const btns = document.querySelectorAll('.draw-tool-btn');
+  if (btns[btnMap[type]]) btns[btnMap[type]].classList.add('on');
+  map.getContainer().style.cursor = 'crosshair';
+  const labels = { marker: 'pin lokasi', text: 'label teks', arrow: 'arah/panah', circle: 'lingkaran area' };
+  toast(`Klik di peta untuk menempatkan ${labels[type] || type}`);
+  _symbolHandler = e => placeSymbol(type, e.latlng);
+  map.once('click', _symbolHandler);
+}
+
+function cancelSymbolMode() {
+  if (_symbolHandler) { map.off('click', _symbolHandler); _symbolHandler = null; }
+  _symbolMode = null;
+  map.getContainer().style.cursor = '';
+  document.querySelectorAll('.draw-tool-btn').forEach(b => b.classList.remove('on'));
+}
+
+function placeSymbol(type, latlng) {
+  _symbolMode = null; _symbolHandler = null;
+  map.getContainer().style.cursor = '';
+  document.querySelectorAll('.draw-tool-btn').forEach(b => b.classList.remove('on'));
+
+  if (type === 'marker') {
+    const m = L.marker(latlng, { draggable: true }).addTo(map);
+    const label = prompt('Nama lokasi / keterangan:');
+    if (label) m.bindPopup(`<b>${label}</b>`).openPopup();
+    m.on('dblclick', () => { if (confirm('Hapus marker ini?')) map.removeLayer(m); });
+
+  } else if (type === 'text') {
+    const txt = prompt('Teks label:');
+    if (!txt) return;
+    const icon = L.divIcon({
+      html: `<div style="background:rgba(0,0,0,.6);color:#fff;padding:3px 8px;border-radius:6px;font-size:13px;font-weight:600;white-space:nowrap;cursor:move">${txt}</div>`,
+      className: '', iconAnchor: [0, 0]
+    });
+    const m = L.marker(latlng, { icon, draggable: true }).addTo(map);
+    m.on('dblclick', () => { if (confirm('Hapus label ini?')) map.removeLayer(m); });
+
+  } else if (type === 'circle') {
+    const r = parseFloat(prompt('Radius lingkaran (meter):', '10') || '10');
+    if (isNaN(r) || r <= 0) return;
+    const c = L.circle(latlng, { radius: r, color: '#e05c2a', fillOpacity: 0.15, weight: 2 }).addTo(map);
+    // drag lingkaran via marker transparan di tengah
+    const dragIcon = L.divIcon({ html: '<div style="width:18px;height:18px;background:rgba(224,92,42,.35);border:2px solid #e05c2a;border-radius:50%;cursor:move"></div>', className:'', iconAnchor:[9,9] });
+    const handle = L.marker(latlng, { icon: dragIcon, draggable: true, zIndexOffset: 500 }).addTo(map);
+    handle.on('drag', ev => c.setLatLng(ev.latlng));
+    handle.on('dblclick', () => { if (confirm('Hapus lingkaran ini?')) { map.removeLayer(c); map.removeLayer(handle); } });
+    c.on('dblclick', () => { if (confirm('Hapus lingkaran ini?')) { map.removeLayer(c); map.removeLayer(handle); } });
+
+  } else if (type === 'arrow') {
+    toast('Klik titik akhir panah');
+    map.once('click', e2 => {
+      let p1 = latlng, p2 = e2.latlng;
+      const line = L.polyline([p1, p2], { color: '#e05c2a', weight: 3 }).addTo(map);
+
+      const updateArrow = () => {
+        line.setLatLngs([p1, p2]);
+        const dx = p2.lng - p1.lng, dy = p2.lat - p1.lat;
+        const angle = Math.atan2(dx, dy) * 180 / Math.PI;
+        tip.setIcon(L.divIcon({
+          html: `<div style="transform:rotate(${angle}deg);font-size:20px;line-height:1;color:#e05c2a;margin-left:-10px;margin-top:-10px">▲</div>`,
+          className: '', iconAnchor: [0, 0]
+        }));
+        tip.setLatLng(p2);
+        startHandle.setLatLng(p1);
+      };
+
+      const dx0 = p2.lng - p1.lng, dy0 = p2.lat - p1.lat;
+      const angle0 = Math.atan2(dx0, dy0) * 180 / Math.PI;
+      const tip = L.marker(p2, { icon: L.divIcon({
+        html: `<div style="transform:rotate(${angle0}deg);font-size:20px;line-height:1;color:#e05c2a;margin-left:-10px;margin-top:-10px">▲</div>`,
+        className: '', iconAnchor: [0, 0]
+      }), draggable: true, zIndexOffset: 500 }).addTo(map);
+
+      const startIcon = L.divIcon({ html: '<div style="width:12px;height:12px;background:#e05c2a;border:2px solid #fff;border-radius:50%;cursor:move"></div>', className:'', iconAnchor:[6,6] });
+      const startHandle = L.marker(p1, { icon: startIcon, draggable: true, zIndexOffset: 500 }).addTo(map);
+
+      startHandle.on('drag', ev => { p1 = ev.latlng; updateArrow(); });
+      tip.on('drag', ev => { p2 = ev.latlng; updateArrow(); });
+
+      const removeAll = () => { map.removeLayer(line); map.removeLayer(tip); map.removeLayer(startHandle); };
+      line.on('dblclick', () => { if (confirm('Hapus panah ini?')) removeAll(); });
+      tip.on('dblclick', () => { if (confirm('Hapus panah ini?')) removeAll(); });
+      startHandle.on('dblclick', () => { if (confirm('Hapus panah ini?')) removeAll(); });
+    });
+  }
+}
+
 async function onMapClick(e) {
   if (!addMode) return;
   const n  = tents.filter(t=>t.type==='peserta').length + 1;
@@ -1876,17 +2239,59 @@ async function onMapClick(e) {
   toast(`Kavling ${id} ditambahkan`);
 }
 
+let expandedLayerIds = new Set();
+let layerListCollapsed = false;
+let ovListCollapsed = false;
+
+function toggleLayerList() {
+  layerListCollapsed = !layerListCollapsed;
+  const el = document.getElementById('layer-list');
+  const ch = document.getElementById('layer-list-chevron');
+  if (el) el.style.display = layerListCollapsed ? 'none' : '';
+  if (ch) ch.style.transform = layerListCollapsed ? 'rotate(-90deg)' : '';
+}
+function toggleOvList() {
+  ovListCollapsed = !ovListCollapsed;
+  const el = document.getElementById('overlay-list');
+  const ch = document.getElementById('overlay-list-chevron');
+  if (el) el.style.display = ovListCollapsed ? 'none' : '';
+  if (ch) ch.style.transform = ovListCollapsed ? 'rotate(-90deg)' : '';
+}
+
+let activeSymbolMode = null;
+function addSymbolMode(type) {
+  if (activeSymbolMode === type) {
+    activeSymbolMode = null;
+    map.getContainer().style.cursor = '';
+    toast('Mode symbol dimatikan');
+    return;
+  }
+  activeSymbolMode = type;
+  map.getContainer().style.cursor = 'crosshair';
+  toast(`Klik di peta untuk menambah ${type}`);
+}
+
+function toggleLayerExpand(id) {
+  if (expandedLayerIds.has(id)) expandedLayerIds.delete(id); else expandedLayerIds.add(id);
+  renderLayerList();
+}
+
 function renderLayerList() {
   const el = document.getElementById('layer-list'); if (!el) return;
-  if (!mapLayers.length) { el.innerHTML = '<div class="muted" style="font-size:11px">Belum ada layer</div>'; return; }
-  el.innerHTML = mapLayers.map(l => `
-    <div class="layer-item">
-      <div class="layer-dot" style="background:${l.color}"></div>
-      <div class="layer-lbl" title="${l.name}">${l.name}</div>
-      <button class="lbtn" onclick="toggleLayerVis('${l.id}')" title="Tampilkan/Sembunyikan" style="opacity:${l.visible?1:.4}"><i data-lucide="eye" class="lucide" style="width:14px;height:14px"></i></button>
-      <button class="lbtn ${l.locked?'locked':''}" onclick="toggleLayerLock('${l.id}')" title="Kunci Layer"><i data-lucide="${l.locked?'lock':'lock-open'}" class="lucide" style="width:14px;height:14px"></i></button>
-      <button class="lbtn" onclick="renameMapLayer('${l.id}')" title="Ubah Nama"><i data-lucide="pencil" class="lucide" style="width:14px;height:14px"></i></button>
-      <button class="lbtn" onclick="deleteMapLayer('${l.id}')" title="Hapus"><i data-lucide="trash-2" class="lucide" style="width:14px;height:14px"></i></button>
+  if (!mapLayers.length) { el.innerHTML = ''; return; }
+  const sortedLayers = [...mapLayers].sort((a, b) => (b.visible ? 1 : 0) - (a.visible ? 1 : 0));
+  el.innerHTML = sortedLayers.map(l => `
+    <div>
+      <div class="layer-item" onclick="toggleLayerExpand('${l.id}')">
+        <div class="layer-dot" style="background:${l.color}"></div>
+        <span class="layer-lbl" style="color:${l.visible?'var(--ink)':'var(--ink-muted)'}">${l.name}</span>
+        <button class="lbtn ${l.visible?'active':''}" onclick="event.stopPropagation();toggleLayerVis('${l.id}')" title="${l.visible?'Sembunyikan':'Tampilkan'}"><i data-lucide="eye${l.visible?'':'-off'}" class="lucide" style="width:13px;height:13px"></i></button>
+      </div>
+      ${expandedLayerIds.has(l.id) ? `
+      <div style="display:flex;gap:4px;padding:2px 8px 6px 22px">
+        <button class="lbtn" style="width:auto;padding:3px 8px;font-size:11px;gap:4px" onclick="renameMapLayer('${l.id}')"><i data-lucide="pencil" class="lucide" style="width:12px;height:12px"></i> Ubah Nama</button>
+        <button class="lbtn" style="width:auto;padding:3px 8px;font-size:11px;gap:4px;color:var(--red)" onclick="deleteMapLayer('${l.id}')"><i data-lucide="trash-2" class="lucide" style="width:12px;height:12px"></i> Hapus</button>
+      </div>` : ''}
     </div>`).join('');
   lucide.createIcons();
 }
@@ -1899,17 +2304,8 @@ function toggleLayerVis(id) {
   renderLayerList();
 }
 
-function toggleLayerLock(id) {
-  const l = mapLayers.find(x => x.id === id); if (!l) return;
-  l.locked = !l.locked;
-  dbUpsertMapLayer(l);
-  renderLayerList();
-  toast(l.locked ? `Layer "${l.name}" dikunci` : `Layer "${l.name}" dibuka`);
-}
-
 function renameMapLayer(id) {
   const l = mapLayers.find(x => x.id === id); if (!l) return;
-  if (l.locked) { toast('Buka kunci layer ini dulu', true); return; }
   const newName = prompt('Nama layer:', l.name);
   if (newName && newName.trim()) {
     l.name = newName.trim();
@@ -1921,7 +2317,6 @@ function renameMapLayer(id) {
 
 function deleteMapLayer(id) {
   const l = mapLayers.find(x => x.id === id); if (!l) return;
-  if (l.locked) { toast('Buka kunci layer ini dulu', true); return; }
   if (!confirm(`Hapus layer "${l.name}"?`)) return;
   map.removeLayer(l.layer);
   mapLayers = mapLayers.filter(x => x.id !== id);
@@ -2173,16 +2568,41 @@ function handleCSV(inp) {
   const reader = new FileReader();
   reader.onload = e => {
     const lines = e.target.result.split('\n').filter(l=>l.trim());
-    let imported = 0;
+    const header = lines[0].toLowerCase();
+    const newFmt = header.includes('kavling_id') || header.includes('ukuran');
+    let imported = 0, skipped = 0;
+
     lines.slice(1).forEach(line => {
-      const [fam, mbr, tentId] = line.split(',').map(c=>c.trim().replace(/"/g,''));
+      if (!line.trim()) return;
+      const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g,''));
+      let tentId, fam, sz, memberNames;
+
+      if (newFmt) {
+        // Format baru: kavling_id, nama_keluarga, ukuran, anggota
+        [tentId, fam, sz, memberNames] = cols;
+      } else {
+        // Format lama: nama_keluarga, jumlah_anggota, kavling_id
+        [fam, , tentId] = cols;
+        sz = null; memberNames = '';
+      }
+
       const t = tents.find(x => x.id === tentId);
-      if (t) { t.family = fam; t.members = parseInt(mbr)||1; t.status = 'occupied'; imported++; }
+      if (!t) { skipped++; return; }
+
+      t.family = fam || t.family;
+      if (sz && sz !== 'bawa-sendiri') t.size = sz.replace('x','×').replace(/m?$/,'m');
+      const names = (memberNames || '').split('|').map(s=>s.trim()).filter(Boolean);
+      t.members = names.length || t.members || 1;
+      t.member_names = names;
+      t.status = fam ? 'occupied' : t.status;
+      imported++;
     });
+
     const changed = tents.filter(t => t.status === 'occupied');
-    dbUpsertTents(changed); renderAllTents();
-    document.getElementById('csv-preview').innerHTML = `<div class="badge badge-g">✓ ${imported} peserta berhasil di-import</div>`;
-    toast(`📥 ${imported} peserta berhasil di-import dari CSV`);
+    dbUpsertTents(changed); renderAllTents(); updateStats();
+    const msg = `✓ ${imported} kavling diimport${skipped ? `, ${skipped} ID tidak ditemukan` : ''}`;
+    document.getElementById('csv-preview').innerHTML = `<div class="badge badge-g">${msg}</div>`;
+    toast(`📥 ${msg}`);
   };
   reader.readAsText(file);
 }
@@ -2200,9 +2620,28 @@ function applyMode(m) {
   mode = m;
   const modeKeys = ['public','peserta','admin'];
   document.querySelectorAll('.mode-btn').forEach((b,i) => b.classList.toggle('on', modeKeys[i] === m));
+
+  // Sync bottom nav
+  ['public','peserta','admin'].forEach(k => {
+    const btn = document.getElementById('mnav-' + k);
+    if (btn) btn.classList.toggle('on', k === m);
+  });
+
   const lsb = document.getElementById('lsb');
   const rsb  = document.getElementById('rsb');
-  lsb.classList.toggle('vis', m === 'admin');
+  const isMobile = window.innerWidth <= 768;
+
+  if (m === 'admin') {
+    if (!isMobile) lsb.classList.add('vis');
+    // show hamburger on mobile for admin
+    const hmb = document.getElementById('hdr-menu-btn');
+    if (hmb) hmb.style.display = 'flex';
+  } else {
+    toggleAdminDrawer(false);
+    lsb.classList.remove('vis');
+    const hmb = document.getElementById('hdr-menu-btn');
+    if (hmb) hmb.style.display = 'none';
+  }
   if (m !== 'admin') rsb.classList.remove('vis');
   const tk = document.getElementById('map-toolkit');
   if (tk) tk.classList.toggle('vis', m === 'admin');
@@ -2220,7 +2659,19 @@ function applyMode(m) {
     const coords = tents.filter(t => t.type === 'peserta').map(t => [parseFloat(t.lat), parseFloat(t.lon)]);
     if (coords.length) setTimeout(() => map.fitBounds(coords, { padding: [40, 40], maxZoom: 19 }), 300);
   }
-  renderAllTents(); // re-render for drag support
+  renderAllTents();
+}
+
+function toggleAdminDrawer(force) {
+  const lsb = document.getElementById('lsb');
+  const overlay = document.getElementById('lsb-overlay');
+  if (!lsb || !overlay) return;
+  if (window.innerWidth > 768) return;
+  const open = force !== undefined ? force : !lsb.classList.contains('vis');
+  lsb.classList.toggle('vis', open);
+  overlay.classList.toggle('show', open);
+  // prevent map scroll behind
+  document.body.style.overflow = open ? 'hidden' : '';
 }
 
 function doLogin() {
@@ -2251,6 +2702,8 @@ async function doPesertaLogin() {
   participantData = p;
   closeOv('m-peserta-login');
   document.getElementById('mode-btn-peserta').innerHTML = `<i data-lucide="tent" class="lucide"></i> ${p.family_name}`;
+  const mnl = document.getElementById('mnav-peserta-lbl');
+  if (mnl) mnl.textContent = p.family_name.split(' ')[0];
   applyMode('peserta');
   toast('Selamat datang, ' + p.family_name + '!');
 }
