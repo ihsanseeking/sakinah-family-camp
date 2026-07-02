@@ -1149,13 +1149,13 @@ function applyTileLayer(idx) {
   currentTileLayers = [];
   if (t.base === 'satelit') {
     // hybrid: satelit base + label overlay
-    const base = L.tileLayer(TILE_LAYERS[0].url, { attribution: t.attr, maxZoom:21, maxNativeZoom:19 });
-    const labels = L.tileLayer(t.url, { maxZoom:21, maxNativeZoom:19, opacity:1 });
+    const base = L.tileLayer(TILE_LAYERS[0].url, { attribution: t.attr, maxZoom:22, maxNativeZoom:19 });
+    const labels = L.tileLayer(t.url, { maxZoom:22, maxNativeZoom:19, opacity:1 });
     base.addTo(map); base.bringToBack();
     labels.addTo(map);
     currentTileLayers = [base, labels];
   } else {
-    const layer = L.tileLayer(t.url, { attribution: t.attr, maxZoom:21, maxNativeZoom:t.maxNative });
+    const layer = L.tileLayer(t.url, { attribution: t.attr, maxZoom:22, maxNativeZoom:t.maxNative });
     layer.addTo(map); layer.bringToBack();
     currentTileLayers = [layer];
   }
@@ -1170,7 +1170,7 @@ function cycleTileLayer() {
 }
 
 async function initMap() {
-  map = L.map('map', { zoomControl:false }).setView(CAMP_CENTER, CAMP_ZOOM);
+  map = L.map('map', { zoomControl:false, maxZoom:22 }).setView(CAMP_CENTER, CAMP_ZOOM);
 
   applyTileLayer(0); // default: satelit
 
