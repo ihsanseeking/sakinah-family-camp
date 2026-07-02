@@ -3900,6 +3900,11 @@ function setSortKavling(col) {
 let _editingPId = null;
 let _addingParticipant = false;
 
+function startEditParticipant(id)  { _editingPId = String(id); _addingParticipant = false; renderDataList(); }
+function cancelEditParticipant()   { _editingPId = null; renderDataList(); }
+function startAddParticipant()     { _addingParticipant = true; _editingPId = null; renderDataList(); }
+function cancelAddParticipant()    { _addingParticipant = false; renderDataList(); }
+
 async function openDataPage() {
   const el = document.getElementById('m-data');
   el.classList.add('show');
@@ -4011,13 +4016,13 @@ function renderDataList() {
         <td style="padding:4px 6px"><input id="padd-members-names" placeholder="Nama|Nama|..." style="width:180px;padding:4px 6px;border:1px solid var(--primary);border-radius:6px;font-size:12px;background:var(--canvas);color:var(--ink)"></td>
         <td style="padding:4px 8px;white-space:nowrap">
           <button onclick="saveAddParticipant()" style="padding:4px 10px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;margin-right:4px">Simpan</button>
-          <button onclick="_addingParticipant=false;renderDataList()" style="padding:4px 8px;border:1px solid var(--hairline);background:transparent;border-radius:6px;cursor:pointer;font-size:12px">Batal</button>
+          <button onclick="cancelAddParticipant()" style="padding:4px 8px;border:1px solid var(--hairline);background:transparent;border-radius:6px;cursor:pointer;font-size:12px">Batal</button>
         </td>
       </tr>` : '';
 
     el.innerHTML = `
       <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-        <button onclick="_addingParticipant=true;_editingPId=null;renderDataList()"
+        <button onclick="startAddParticipant()"
           style="padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">
           + Tambah Peserta
         </button>
@@ -4076,7 +4081,7 @@ function renderDataList() {
                   <td style="padding:4px 6px">${inp(mnRaw, p.id, 'mnames','180px')}</td>
                   <td style="padding:4px 8px;white-space:nowrap">
                     <button onclick="saveParticipantEdit('${p.id}')" style="padding:4px 10px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;margin-right:4px">Simpan</button>
-                    <button onclick="_editingPId=null;renderDataList()" style="padding:4px 8px;border:1px solid var(--hairline);background:transparent;border-radius:6px;cursor:pointer;font-size:12px">Batal</button>
+                    <button onclick="cancelEditParticipant()" style="padding:4px 8px;border:1px solid var(--hairline);background:transparent;border-radius:6px;cursor:pointer;font-size:12px">Batal</button>
                   </td>
                 </tr>`;
               }
@@ -4111,7 +4116,7 @@ function renderDataList() {
                      style="display:inline-flex;align-items:center;gap:3px;padding:4px 7px;background:#25D366;color:#fff;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;margin-right:3px">
                      ${waIcon} WA
                   </a>
-                  <button onclick="_editingPId='${p.id}';_addingParticipant=false;renderDataList()" title="Edit"
+                  <button onclick="startEditParticipant('${p.id}')" title="Edit"
                      style="padding:4px 7px;border:1px solid var(--primary);background:transparent;border-radius:6px;cursor:pointer;color:var(--primary);font-size:11px;margin-right:3px">✏️</button>
                   <button onclick="deleteParticipant('${p.id}','${p.family_name.replace(/'/g,"\\'")}','${p.claimed_tent_id||''}')"
                      title="Hapus" style="padding:4px 7px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:6px;cursor:pointer;color:var(--red,#ef4444);font-size:11px;font-weight:600">🗑</button>
