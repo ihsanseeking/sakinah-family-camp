@@ -573,6 +573,7 @@
       <div class="spec-grid">
         <div class="spec-box"><div class="spec-v" id="dp-cap">—</div><div class="spec-k">Kapasitas</div></div>
         <div class="spec-box"><div class="spec-v" id="dp-sz">—</div><div class="spec-k">Ukuran</div></div>
+        <div class="spec-box"><div class="spec-v" id="dp-own">—</div><div class="spec-k">Tenda</div></div>
       </div>
       <div class="muted mt8" id="dp-fac">—</div>
     </div>
@@ -625,6 +626,7 @@
   <div class="spec-grid" style="margin-bottom:14px">
     <div class="spec-box"><div class="spec-v" id="bs-cap">—</div><div class="spec-k">Kapasitas</div></div>
     <div class="spec-box"><div class="spec-v" id="bs-sz">—</div><div class="spec-k">Ukuran</div></div>
+    <div class="spec-box"><div class="spec-v" id="bs-own">—</div><div class="spec-k">Tenda</div></div>
   </div>
   <div class="muted" id="bs-fac" style="margin-bottom:16px">—</div>
 
@@ -715,6 +717,12 @@
         <option value="peserta">Peserta Umum</option>
         <option value="panitia">Panitia</option>
         <option value="vip">VIP / Tamu Khusus</option>
+      </select>
+    </div>
+    <div class="fg"><label>Status Tenda</label>
+      <select class="fi" id="edit-ownership">
+        <option value="sewa">Sewa (dari panitia)</option>
+        <option value="sendiri">Bawa Sendiri</option>
       </select>
     </div>
     <div class="fg"><label>Fasilitas</label><input class="fi" id="edit-fac" placeholder="Matras, Penerangan"></div>
@@ -941,6 +949,7 @@ function tentDbRow(t) {
   return {
     id: t.id, lat: t.lat, lon: t.lon, capacity: t.capacity, size: t.size,
     type: t.type, facilities: t.facilities, status: t.status,
+    ownership: t.ownership || 'sewa',
     family: t.family || null, members: typeof t.members === 'number' ? t.members : (Array.isArray(t.member_names) ? t.member_names.length : null),
     member_names: Array.isArray(t.member_names) ? t.member_names : [],
     rotation: t.rotation || 0, is_collision_checked: t.is_collision_checked || false,
@@ -1500,6 +1509,10 @@ async function showScanPage(tentId, t) {
             <div style="font-size:16px;font-weight:700">${t.capacity || '—'}P</div>
           </div>
           <div>
+            <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Tenda</div>
+            <div style="font-size:14px;font-weight:600">${t.ownership === 'sendiri' ? '🏕️ Bawa Sendiri' : '🔑 Sewa'}</div>
+          </div>
+          <div>
             <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Penghuni</div>
             <div style="font-size:15px;font-weight:600">${t.family || '—'}</div>
           </div>
@@ -1594,6 +1607,7 @@ function showDetailPanel(t) {
   document.getElementById('dp-id').textContent = t.id;
   document.getElementById('dp-cap').textContent = t.capacity + 'P';
   document.getElementById('dp-sz').textContent  = t.size;
+  document.getElementById('dp-own').textContent = t.ownership === 'sendiri' ? 'Bawa Sendiri' : 'Sewa';
   document.getElementById('dp-fac').textContent = t.facilities;
   const isPrivate = mode === 'public' && t.status === 'occupied';
   document.getElementById('dp-fam').textContent = isPrivate ? 'Terisi' : (t.family || '—');
@@ -1631,6 +1645,7 @@ function showBSheet(t) {
   document.getElementById('bs-id').textContent  = t.id;
   document.getElementById('bs-cap').textContent = t.capacity + 'P';
   document.getElementById('bs-sz').textContent  = t.size;
+  document.getElementById('bs-own').textContent = t.ownership === 'sendiri' ? 'Bawa Sendiri' : 'Sewa';
   document.getElementById('bs-fac').textContent = t.facilities;
   const alreadyClaimed = participantData && participantData.claimed_tent_id && participantData.claimed_tent_id !== t.id;
   const avail = t.status === 'available' && t.type !== 'panitia' && !alreadyClaimed;
@@ -1765,10 +1780,11 @@ function openEditModal() {
   if (!t) return;
   document.getElementById('edit-orig-id').value = t.id;
   document.getElementById('edit-num').value     = t.id;
-  document.getElementById('edit-cap').value     = t.capacity;
-  document.getElementById('edit-sz').value      = t.size;
-  document.getElementById('edit-type').value    = t.type;
-  document.getElementById('edit-fac').value     = t.facilities;
+  document.getElementById('edit-cap').value       = t.capacity;
+  document.getElementById('edit-sz').value        = t.size;
+  document.getElementById('edit-type').value      = t.type;
+  document.getElementById('edit-ownership').value = t.ownership || 'sewa';
+  document.getElementById('edit-fac').value       = t.facilities;
   openOv('m-edit');
 }
 
@@ -1777,10 +1793,11 @@ async function saveTentEdit() {
   const t    = tents.find(x => x.id === orig);
   if (!t) return;
   t.id        = document.getElementById('edit-num').value || orig;
-  t.capacity  = parseInt(document.getElementById('edit-cap').value) || 4;
-  t.size      = document.getElementById('edit-sz').value || '3×3m';
-  t.type      = document.getElementById('edit-type').value;
-  t.facilities= document.getElementById('edit-fac').value;
+  t.capacity   = parseInt(document.getElementById('edit-cap').value) || 4;
+  t.size       = document.getElementById('edit-sz').value || '3×3m';
+  t.type       = document.getElementById('edit-type').value;
+  t.ownership  = document.getElementById('edit-ownership').value || 'sewa';
+  t.facilities = document.getElementById('edit-fac').value;
   renderAllTents(); showDetailPanel(t);
   if (checkCollision(t.id)) {
     toast('⚠️ Ukuran/tipe menyebabkan tabrakan dengan kavling lain!', true);
@@ -3871,6 +3888,7 @@ function renderKavlingList() {
               <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--ink-muted)">Anggota</th>
               <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--ink-muted)">Ukuran</th>
               <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--ink-muted)">Tipe</th>
+              <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--ink-muted)">Tenda</th>
               <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--ink-muted)">Aksi</th>
             </tr>
           </thead>
@@ -3896,6 +3914,13 @@ function renderKavlingList() {
                     style="padding:4px 6px;border:1px solid var(--hairline);border-radius:6px;font-size:12px;background:var(--surface-1);color:var(--ink);cursor:pointer">
                     <option value="peserta" ${t.type==='peserta'||!t.type?'selected':''}>Peserta</option>
                     <option value="panitia" ${t.type==='panitia'?'selected':''}>Panitia</option>
+                  </select>
+                </td>
+                <td style="padding:4px 6px;text-align:center">
+                  <select onchange="updateTentOwnership('${t.id}',this.value)"
+                    style="padding:4px 6px;border:1px solid var(--hairline);border-radius:6px;font-size:12px;background:var(--surface-1);color:var(--ink);cursor:pointer">
+                    <option value="sewa" ${(t.ownership||'sewa')==='sewa'?'selected':''}>Sewa</option>
+                    <option value="sendiri" ${t.ownership==='sendiri'?'selected':''}>Bawa Sendiri</option>
                   </select>
                 </td>
                 <td style="padding:4px 6px;text-align:center;white-space:nowrap">
@@ -3979,6 +4004,12 @@ async function updateTentType(id, val) {
   t.type = val;
   await dbUpsertTent(t); renderAllTents(); renderKavlingList();
   toast(`Tipe ${id} → ${val}`);
+}
+async function updateTentOwnership(id, val) {
+  const t = tents.find(x => x.id === id); if (!t) return;
+  t.ownership = val;
+  await dbUpsertTent(t); renderKavlingList();
+  toast(`${id} → ${val === 'sendiri' ? 'Bawa Sendiri' : 'Sewa'}`);
 }
 
 async function resetTent(id) {
