@@ -3678,9 +3678,11 @@ function renderKavlingList() {
                     <option value="panitia" ${t.type==='panitia'?'selected':''}>Panitia</option>
                   </select>
                 </td>
-                <td style="padding:4px 6px;text-align:center">
-                  <button onclick="resetTent('${t.id}')"
-                    style="padding:4px 8px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:6px;cursor:pointer;color:var(--red,#ef4444);font-size:11px;font-weight:600">Reset</button>
+                <td style="padding:4px 6px;text-align:center;white-space:nowrap">
+                  <button onclick="resetTent('${t.id}')" title="Reset penghuni"
+                    style="padding:4px 8px;border:1px solid var(--hairline);background:transparent;border-radius:6px;cursor:pointer;color:var(--ink-muted);font-size:11px;margin-right:3px">↺ Reset</button>
+                  <button onclick="deleteTentFromList('${t.id}')" title="Hapus kavling"
+                    style="padding:4px 8px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:6px;cursor:pointer;color:var(--red,#ef4444);font-size:11px;font-weight:600">🗑</button>
                 </td>
               </tr>`;
             }).join('')}
@@ -3772,6 +3774,27 @@ async function resetTent(id) {
   await dbUpsertTent(t); renderAllTents(); updateStats();
   toast(`Kavling ${id} direset`);
   renderKavlingList();
+}
+
+async function deleteTentFromList(id) {
+  const t = tents.find(x => x.id === id); if (!t) return;
+  const label = t.family ? ` (ditempati ${t.family})` : '';
+  if (!confirm(`Hapus kavling ${id}${label}?\n\nKavling akan dihapus dari peta dan database. Tindakan ini tidak bisa dibatalkan.`)) return;
+  // Lepas tautan peserta jika ada
+  const p = allParticipants.find(x => x.claimed_tent_id === id);
+  if (p) {
+    p.claimed_tent_id = null;
+    await sb.from('participants').update({ claimed_tent_id: null }).eq('id', p.id);
+  }
+  // Hapus dari peta
+  if (tentMarkers[id]) { map.removeLayer(tentMarkers[id]); delete tentMarkers[id]; }
+  // Hapus dari DB
+  const { error } = await sb.from('tents').delete().eq('id', id);
+  if (error) { toast('Gagal hapus: ' + error.message, true); return; }
+  tents = tents.filter(x => x.id !== id);
+  updateStats();
+  renderKavlingList();
+  toast(`Kavling ${id} dihapus`);
 }
 
 async function bulkResizeTents() {
