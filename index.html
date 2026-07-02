@@ -2974,6 +2974,7 @@ let participantData = null;
 // ══════════════════════════════════════════════
 let allParticipants = [];
 let dataTab = 'all';
+let dpExpanded = new Set();
 
 async function openDataPage() {
   const el = document.getElementById('m-data');
@@ -3036,35 +3037,61 @@ function renderDataList() {
   el.innerHTML = list.map(p => {
     const tent = p.claimed_tent_id ? tents.find(t => t.id === p.claimed_tent_id) : null;
     const tentLabel = tent ? tent.id : (p.claimed_tent_id || null);
-    const members = Array.isArray(p.member_names) && p.member_names.length ? p.member_names : [];
-    const memberCount = p.members || members.length || 0;
+    const memberNamesRaw = typeof p.member_names === 'string' ? p.member_names : (Array.isArray(p.member_names) ? p.member_names.join('|') : '');
+    const memberList = memberNamesRaw ? memberNamesRaw.split('|').map(s => s.trim()).filter(Boolean) : [];
+    const memberCount = p.members || memberList.length || 0;
     const availTents = tents.filter(t => t.status === 'available' && t.type === 'peserta').sort((a,b) => a.id.localeCompare(b.id));
     const waText = encodeURIComponent(`Assalamu'alaikum Keluarga *${p.family_name}* 🌿\n\nBerikut kode voucher untuk memilih kavling tenda di *Sakinah Family Camp #3*:\n\n🎟️ Kode: *${p.code}*\n\n🔗 Akses peta: ${appUrl}\n\nMasukkan kode di menu Peserta, lalu pilih kavling yang tersedia. Sampai jumpa di camp! 🏕️`);
+    const isExpanded = dpExpanded.has(String(p.id));
+    const roleLabel = p.role === 'panitia' ? `<span style="font-size:10px;background:var(--blue);color:#fff;padding:1px 6px;border-radius:10px;font-weight:600">Panitia</span>` : '';
 
-    return `<div style="background:var(--surface-1);border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:3px solid ${tentLabel ? 'var(--green)' : 'var(--hairline)'}">
-      <div style="display:flex;align-items:flex-start;gap:10px">
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
-            <span onclick="navigator.clipboard.writeText('${p.code}').then(()=>toast('Kode disalin!'))" title="Salin kode" style="font-size:13px;font-weight:700;color:var(--primary);font-family:monospace;letter-spacing:1.5px;cursor:pointer;border:1px dashed var(--primary);padding:2px 8px;border-radius:6px">${p.code}</span>
-            ${tentLabel ? `<span style="font-size:10px;background:var(--green);color:#fff;padding:1px 6px;border-radius:10px;font-weight:600">${tentLabel}</span>` : `<span style="font-size:10px;background:var(--surface-2);color:var(--ink-muted);padding:1px 6px;border-radius:10px">Belum pilih</span>`}
+    const detailHtml = isExpanded ? `
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--hairline)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+          <div style="background:var(--canvas);border-radius:8px;padding:8px">
+            <div style="font-size:10px;color:var(--ink-muted);margin-bottom:2px">VOUCHER</div>
+            <div style="font-size:14px;font-weight:700;font-family:monospace;letter-spacing:2px;color:var(--primary)">${p.code}</div>
           </div>
-          <div style="font-size:14px;font-weight:600;margin-bottom:2px">${p.family_name}</div>
-          ${memberCount ? `<div style="font-size:11px;color:var(--ink-muted)">${memberCount} anggota${members.length ? ': ' + members.slice(0,2).join(', ') + (members.length > 2 ? ` +${members.length-2}` : '') : ''}</div>` : ''}
-          <a href="https://wa.me/?text=${waText}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:11px;color:#25D366;text-decoration:none;font-weight:600">
-            <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.553 4.117 1.523 5.849L.057 23.5l5.797-1.44A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.006-1.37l-.36-.213-3.716.923.96-3.617-.234-.371A9.818 9.818 0 1 1 12 21.818z"/></svg>
+          <div style="background:var(--canvas);border-radius:8px;padding:8px">
+            <div style="font-size:10px;color:var(--ink-muted);margin-bottom:2px">KAVLING</div>
+            <div style="font-size:14px;font-weight:700;color:${tentLabel ? 'var(--green)' : 'var(--ink-muted)'}">${tentLabel || '—'}</div>
+          </div>
+        </div>
+        ${memberList.length ? `
+          <div style="margin-bottom:10px">
+            <div style="font-size:10px;color:var(--ink-muted);font-weight:600;margin-bottom:4px">ANGGOTA KELUARGA (${memberList.length})</div>
+            ${memberList.map((m,i) => `<div style="font-size:12px;padding:3px 0;border-bottom:1px solid var(--hairline)">${i+1}. ${m}</div>`).join('')}
+          </div>` : memberCount ? `<div style="font-size:12px;color:var(--ink-muted);margin-bottom:10px">${memberCount} anggota (nama belum diisi)</div>` : ''}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+          <a href="https://wa.me/?text=${waText}" target="_blank" style="flex:1;min-width:100px;display:flex;align-items:center;justify-content:center;gap:5px;padding:7px;background:#25D366;color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none">
+            <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.553 4.117 1.523 5.849L.057 23.5l5.797-1.44A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.006-1.37l-.36-.213-3.716.923.96-3.617-.234-.371A9.818 9.818 0 1 1 12 21.818z"/></svg>
             Kirim WA
           </a>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
           ${tentLabel
-            ? `<button onclick="adminUnassignTent('${p.id}','${p.claimed_tent_id}')" style="font-size:10px;padding:4px 8px;border:1px solid var(--hairline);background:transparent;border-radius:6px;cursor:pointer;color:var(--red)">Lepas</button>
-               <button onclick="zoomToTent('${p.claimed_tent_id}')" style="font-size:10px;padding:4px 8px;border:1px solid var(--primary);background:transparent;border-radius:6px;cursor:pointer;color:var(--primary)">Lihat Peta</button>`
-            : `<select onchange="adminAssignTent('${p.id}',this.value);this.value=''" style="font-size:11px;padding:4px 6px;border:1px solid var(--hairline);border-radius:6px;background:var(--canvas);color:var(--ink);cursor:pointer">
+            ? `<button onclick="event.stopPropagation();adminUnassignTent('${p.id}','${p.claimed_tent_id}')" style="flex:1;min-width:80px;padding:7px;border:1px solid var(--hairline);background:transparent;border-radius:8px;cursor:pointer;color:var(--ink-muted);font-size:12px">Lepas Kavling</button>
+               <button onclick="event.stopPropagation();zoomToTent('${p.claimed_tent_id}')" style="flex:1;min-width:80px;padding:7px;border:1px solid var(--primary);background:transparent;border-radius:8px;cursor:pointer;color:var(--primary);font-size:12px">Lihat Peta</button>`
+            : `<select onclick="event.stopPropagation()" onchange="adminAssignTent('${p.id}',this.value);this.value=''" style="flex:1;font-size:12px;padding:7px;border:1px solid var(--hairline);border-radius:8px;background:var(--canvas);color:var(--ink);cursor:pointer">
                 <option value="">Assign kavling…</option>
                 ${availTents.map(t => `<option value="${t.id}">${t.id} (${t.size})</option>`).join('')}
                </select>`}
         </div>
+        <button onclick="event.stopPropagation();deleteParticipant('${p.id}','${p.family_name.replace(/'/g,"\\'")}','${p.claimed_tent_id||''}')" style="width:100%;padding:7px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:8px;cursor:pointer;color:var(--red,#ef4444);font-size:12px;font-weight:600">Hapus Peserta</button>
+      </div>` : '';
+
+    return `<div onclick="toggleDpExpand('${p.id}')" style="background:var(--surface-1);border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:3px solid ${tentLabel ? 'var(--green)' : 'var(--hairline)'};cursor:pointer">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap">
+            <span style="font-size:12px;font-weight:700;color:var(--primary);font-family:monospace;letter-spacing:1px">${p.code}</span>
+            ${tentLabel ? `<span style="font-size:10px;background:var(--green);color:#fff;padding:1px 6px;border-radius:10px;font-weight:600">${tentLabel}</span>` : `<span style="font-size:10px;background:var(--surface-2);color:var(--ink-muted);padding:1px 6px;border-radius:10px">Belum pilih</span>`}
+            ${roleLabel}
+          </div>
+          <div style="font-size:14px;font-weight:600">${p.family_name}</div>
+          ${memberCount ? `<div style="font-size:11px;color:var(--ink-muted)">${memberCount} anggota${memberList.length ? ': ' + memberList.slice(0,2).join(', ') + (memberList.length > 2 ? ` +${memberList.length-2}` : '') : ''}</div>` : ''}
+        </div>
+        <span style="color:var(--ink-muted);font-size:16px;transition:transform .2s;transform:rotate(${isExpanded?'90':'0'}deg)">›</span>
       </div>
+      ${detailHtml}
     </div>`;
   }).join('');
 }
@@ -3104,6 +3131,29 @@ function zoomToTent(tentId) {
   const t = tents.find(x => x.id === tentId); if (!t) return;
   closeDataPage();
   setTimeout(() => map.setView([t.lat, t.lon], 20, { animate: true }), 100);
+}
+
+function toggleDpExpand(id) {
+  const sid = String(id);
+  if (dpExpanded.has(sid)) dpExpanded.delete(sid);
+  else dpExpanded.add(sid);
+  renderDataList();
+}
+
+async function deleteParticipant(id, name, claimedTentId) {
+  if (!confirm(`Hapus peserta "${name}"?\n\nTindakan ini tidak bisa dibatalkan.`)) return;
+  // Lepas kavling jika ada
+  if (claimedTentId) {
+    const t = tents.find(x => x.id === claimedTentId);
+    if (t) { t.status = 'available'; t.family = ''; t.members = 0; await dbUpsertTent(t); renderAllTents(); }
+    await sb.from('tents').update({ status: 'available', family: null, members: 0 }).eq('id', claimedTentId);
+  }
+  const { error } = await sb.from('participants').delete().eq('id', id);
+  if (error) { toast('Gagal hapus: ' + error.message, true); return; }
+  allParticipants = allParticipants.filter(p => String(p.id) !== String(id));
+  dpExpanded.delete(String(id));
+  toast(`Peserta "${name}" dihapus`);
+  renderDataStats(); renderDataList();
 }
 
 async function doPesertaLogin() {
