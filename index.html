@@ -2224,6 +2224,7 @@ function pickLayerCategory() {
         <div style="display:flex;flex-direction:column;gap:8px">
           <button onclick="this.closest('div[style*=fixed]')._resolve('area')" style="padding:12px;border:1px solid var(--hairline);border-radius:10px;background:var(--surface-1);cursor:pointer;font-size:13px;font-weight:600;text-align:left">🌿 <strong>Area</strong> — taman, lapangan, hutan</button>
           <button onclick="this.closest('div[style*=fixed]')._resolve('bangunan')" style="padding:12px;border:1px solid var(--hairline);border-radius:10px;background:var(--surface-1);cursor:pointer;font-size:13px;font-weight:600;text-align:left">🏠 <strong>Bangunan</strong> — gedung, wisma, aula</button>
+          <button onclick="this.closest('div[style*=fixed]')._resolve('jalur')" style="padding:12px;border:1px solid var(--hairline);border-radius:10px;background:var(--surface-1);cursor:pointer;font-size:13px;font-weight:600;text-align:left">〰️ <strong>Jalur</strong> — jalan, akses, lorong</button>
         </div>
       </div>`;
     overlay._resolve = (val) => { document.body.removeChild(overlay); resolve(val); };
