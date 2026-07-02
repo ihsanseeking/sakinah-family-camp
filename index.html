@@ -1349,9 +1349,12 @@ function drawTent(t) {
   const p3 = map.latLngToContainerPoint([t.lat + th / 111320, t.lon]);
   const pxW = Math.abs(p2.x - p1.x), pxH = Math.abs(p3.y - p1.y);
   const fontSize = Math.max(7, Math.min(Math.round(Math.min(pxW, pxH) * 0.38), 32));
+  // Estimasi ukuran teks untuk iconAnchor yang tepat di tengah
+  const approxW = Math.round(lbl.length * fontSize * 0.62);
+  const approxH = Math.round(fontSize * 1.15);
   const labelIcon = L.divIcon({
-    html: `<span style="font-size:${fontSize}px">${lbl}</span>`,
-    className: 'tent-lbl', iconSize: null, iconAnchor: null
+    html: `<div style="font-size:${fontSize}px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.55);white-space:nowrap;pointer-events:none;line-height:1;text-align:center">${lbl}</div>`,
+    className: '', iconSize: [approxW, approxH], iconAnchor: [approxW / 2, approxH / 2]
   });
   const labelMarker = L.marker([t.lat, t.lon], { icon: labelIcon, interactive: false });
 
