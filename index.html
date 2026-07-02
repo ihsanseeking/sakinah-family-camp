@@ -847,15 +847,42 @@
 
 <!-- Event Modal -->
 <div class="ov" id="m-event">
-  <div class="modal">
+  <div class="modal" style="max-width:480px">
     <button class="modal-close" onclick="closeOv('m-event')"><i data-lucide="x" class="lucide"></i></button>
-    <div class="modal-title"><i data-lucide="map" class="lucide" style="width:20px;height:20px"></i> Pengaturan Event</div>
+    <div class="modal-title"><i data-lucide="settings" class="lucide" style="width:20px;height:20px"></i> Pengaturan Event</div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--ink-muted);margin:0 0 6px;text-transform:uppercase;letter-spacing:.5px">Identitas Acara</div>
     <div class="fg"><label>Nama Acara</label><input class="fi" id="ev-name" placeholder="Sakinah Family Camp #3"></div>
-    <div class="fg"><label>Tagline</label><input class="fi" id="ev-tagline" placeholder="Bukit Baros · Sukabumi · Jawa Barat · 2026"></div>
+    <div class="fg"><label>Tagline / Lokasi</label><input class="fi" id="ev-tagline" placeholder="Bukit Baros · Sukabumi · 2026"></div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--ink-muted);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.5px">Koordinat Pusat Peta</div>
     <div class="fi-row">
       <div class="fg"><label>Latitude</label><input class="fi" id="ev-lat" type="number" step="0.0001" placeholder="-6.9663"></div>
       <div class="fg"><label>Longitude</label><input class="fi" id="ev-lon" type="number" step="0.0001" placeholder="106.9578"></div>
     </div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--ink-muted);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.5px">Kavling</div>
+    <div class="fg"><label>Ukuran Kavling Default</label>
+      <select class="fi" id="ev-tent-size">
+        <option value="3×3m">3×3m</option>
+        <option value="4×4m">4×4m</option>
+        <option value="4×6m">4×6m</option>
+        <option value="6×6m">6×6m</option>
+      </select>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--ink-muted);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.5px">WhatsApp</div>
+    <div class="fg"><label>Template Pesan WA</label>
+      <textarea class="fi" id="ev-wa-template" rows="4" placeholder="Assalamu'alaikum Keluarga *{nama}* 🌿&#10;Kode voucher: *{kode}*&#10;Akses peta: {url}" style="resize:vertical;font-size:12px;line-height:1.5"></textarea>
+      <div style="font-size:10px;color:var(--ink-muted);margin-top:3px">Gunakan: <code>{nama}</code> <code>{kode}</code> <code>{url}</code> <code>{kavling}</code></div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--ink-muted);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.5px">Keamanan</div>
+    <div class="fi-row">
+      <div class="fg"><label>PIN Admin (saat ini)</label><input class="fi" id="ev-pin-old" type="password" placeholder="PIN lama"></div>
+      <div class="fg"><label>PIN Baru</label><input class="fi" id="ev-pin-new" type="password" placeholder="PIN baru (kosong = tidak ubah)"></div>
+    </div>
+
     <div class="btn-row mt8">
       <button class="btn btn-gh" onclick="closeOv('m-event')">Batal</button>
       <button class="btn btn-p" onclick="saveEvent()">Simpan</button>
@@ -1054,7 +1081,7 @@ function initRealtime() {
 // ══════════════════════════════════════════════
 //   STATE & CONSTANTS
 // ══════════════════════════════════════════════
-const ADMIN_PIN   = '1234';
+let ADMIN_PIN   = '1234'; // overwritten by currentEvent.admin_pin after loadCurrentEvent()
 const EDIT_ZOOM_THRESHOLD = 17;
 const CAMP_CENTER = [-6.9663, 106.9578];
 const CAMP_ZOOM   = 18;
@@ -3392,7 +3419,14 @@ function renderDataList() {
     const memberNamesRaw = typeof p.member_names === 'string' ? p.member_names : (Array.isArray(p.member_names) ? p.member_names.join('|') : '');
     const memberList = memberNamesRaw ? memberNamesRaw.split('|').map(s => s.trim()).filter(Boolean) : [];
     const memberCount = p.members || memberList.length || 0;
-    const waText = encodeURIComponent(`Assalamu'alaikum Keluarga *${p.family_name}* 🌿\n\nBerikut kode voucher untuk memilih kavling tenda di *Sakinah Family Camp #3*:\n\n🎟️ Kode: *${p.code}*\n\n🔗 Akses peta: ${appUrl}\n\nMasukkan kode di menu Peserta, lalu pilih kavling yang tersedia. Sampai jumpa di camp! 🏕️`);
+    const evName = currentEvent?.name || 'Sakinah Family Camp';
+    const tentId = p.claimed_tent_id || '-';
+    let waRaw = (currentEvent?.wa_template || '').trim();
+    if (!waRaw) {
+      waRaw = `Assalamu'alaikum Keluarga *{nama}* 🌿\n\nBerikut kode voucher untuk memilih kavling tenda di *${evName}*:\n\n🎟️ Kode: *{kode}*\n\n🔗 Akses peta: {url}\n\nMasukkan kode di menu Peserta, lalu pilih kavling yang tersedia. Sampai jumpa di camp! 🏕️`;
+    }
+    const waFilled = waRaw.replace(/\{nama\}/g, p.family_name || '').replace(/\{kode\}/g, p.code || '').replace(/\{url\}/g, appUrl).replace(/\{kavling\}/g, tentId);
+    const waText = encodeURIComponent(waFilled);
     const isExpanded = dpExpanded.has(String(p.id));
     const roleLabel = p.role === 'panitia' ? `<span style="font-size:10px;background:var(--blue);color:#fff;padding:1px 6px;border-radius:10px;font-weight:600">Panitia</span>` : '';
     return { tent, tentLabel, memberList, memberCount, waText, isExpanded, roleLabel };
@@ -3418,6 +3452,7 @@ function renderDataList() {
             <option value="panitia">Panitia</option>
           </select>
         </td>
+        <td style="padding:4px 6px"><input id="padd-phone" placeholder="628xxx" style="width:110px;padding:4px 6px;border:1px solid var(--primary);border-radius:6px;font-size:12px;background:var(--canvas);color:var(--ink)"></td>
         <td style="padding:4px 6px"><input id="padd-members-names" placeholder="Nama|Nama|..." style="width:180px;padding:4px 6px;border:1px solid var(--primary);border-radius:6px;font-size:12px;background:var(--canvas);color:var(--ink)"></td>
         <td style="padding:4px 8px;white-space:nowrap">
           <button onclick="saveAddParticipant()" style="padding:4px 10px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;margin-right:4px">Simpan</button>
@@ -3441,6 +3476,7 @@ function renderDataList() {
               <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted)">Nama Keluarga</th>
               <th style="padding:10px 12px;text-align:center;font-weight:700;color:var(--ink-muted)">Anggota</th>
               <th style="padding:10px 12px;text-align:center;font-weight:700;color:var(--ink-muted)">Kavling / Role</th>
+              <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted)">No. WA</th>
               <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted)">Nama Anggota</th>
               <th style="padding:10px 12px;text-align:center;font-weight:700;color:var(--ink-muted)">Aksi</th>
             </tr>
@@ -3465,6 +3501,7 @@ function renderDataList() {
                       <option value="panitia" ${p.role==='panitia'?'selected':''}>Panitia</option>
                     </select>
                   </td>
+                  <td style="padding:4px 6px">${inp(p.phone||'', p.id, 'phone','110px')}</td>
                   <td style="padding:4px 6px">${inp(mnRaw, p.id, 'mnames','180px')}</td>
                   <td style="padding:4px 8px;white-space:nowrap">
                     <button onclick="saveParticipantEdit('${p.id}')" style="padding:4px 10px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;margin-right:4px">Simpan</button>
@@ -3494,9 +3531,10 @@ function renderDataList() {
                 <td style="padding:8px 12px;font-weight:600">${p.family_name}</td>
                 <td style="padding:8px 12px;text-align:center;color:${memberCount?'var(--ink)':'var(--ink-muted)'};font-weight:${memberCount?'600':'400'}">${memberCount||'—'}</td>
                 <td style="padding:6px 12px">${assignCell}</td>
+                <td style="padding:8px 12px;font-size:12px;color:var(--ink-muted)">${p.phone ? `<a href="https://wa.me/${(p.phone||'').replace(/\D/g,'')}" target="_blank" style="color:var(--primary);text-decoration:none">${p.phone}</a>` : '—'}</td>
                 <td style="padding:8px 12px;font-size:11px;color:var(--ink-muted);max-width:200px">${memberList.length ? memberList.join(', ') : '—'}</td>
                 <td style="padding:6px 12px;text-align:center;white-space:nowrap">
-                  <a href="https://wa.me/?text=${waText}" target="_blank" title="Kirim WA"
+                  <a href="https://wa.me/${(p.phone||'').replace(/\D/g,'')}?text=${waText}" target="_blank" title="Kirim WA"
                      style="display:inline-flex;align-items:center;gap:3px;padding:4px 7px;background:#25D366;color:#fff;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;margin-right:3px">
                      ${waIcon} WA
                   </a>
@@ -3874,9 +3912,10 @@ async function saveParticipantEdit(id) {
   const members = parseInt(document.getElementById(`pedit-members-${id}`)?.value) || 0;
   const role    = document.getElementById(`pedit-role-${id}`)?.value || 'peserta';
   const mnames  = document.getElementById(`pedit-mnames-${id}`)?.value.trim() || '';
+  const phone   = document.getElementById(`pedit-phone-${id}`)?.value.trim() || '';
   if (!name) { toast('Nama tidak boleh kosong', true); return; }
 
-  const updates = { family_name: name, members, role, member_names: mnames, code: code || p.code };
+  const updates = { family_name: name, members, role, member_names: mnames, code: code || p.code, phone };
   const { error } = await sb.from('participants').update(updates).eq('id', id);
   if (error) { toast('Gagal simpan: ' + error.message, true); return; }
   Object.assign(p, updates);
@@ -3898,7 +3937,8 @@ async function saveAddParticipant() {
   const existingCodes = new Set(allParticipants.map(p => p.code));
   const code = codeInp && codeInp.length >= 3 ? codeInp : generateVoucherCode(existingCodes);
 
-  const row = { code, family_name: name, members, role, member_names: mnames, claimed_tent_id: null };
+  const phone   = document.getElementById('padd-phone')?.value.trim() || '';
+  const row = { code, family_name: name, members, role, member_names: mnames, phone, claimed_tent_id: null };
   const { data, error } = await sb.from('participants').insert(row).select().single();
   if (error) { toast('Gagal tambah: ' + error.message, true); return; }
   allParticipants.push(data);
@@ -3968,38 +4008,61 @@ async function loadCurrentEvent() {
     currentEvent = events[0];
     document.getElementById('hdr-name').textContent = currentEvent.name;
     document.getElementById('hdr-tagline').textContent = currentEvent.tagline;
+    if (currentEvent.admin_pin) ADMIN_PIN = currentEvent.admin_pin;
   }
 }
 
 function openEventModal() {
   if (currentEvent) {
-    document.getElementById('ev-name').value = currentEvent.name;
-    document.getElementById('ev-tagline').value = currentEvent.tagline;
-    document.getElementById('ev-lat').value = currentEvent.camp_lat;
-    document.getElementById('ev-lon').value = currentEvent.camp_lon;
+    document.getElementById('ev-name').value = currentEvent.name || '';
+    document.getElementById('ev-tagline').value = currentEvent.tagline || '';
+    document.getElementById('ev-lat').value = currentEvent.camp_lat || '';
+    document.getElementById('ev-lon').value = currentEvent.camp_lon || '';
+    const sizeEl = document.getElementById('ev-tent-size');
+    if (sizeEl) sizeEl.value = currentEvent.default_tent_size || '3×3m';
+    const waEl = document.getElementById('ev-wa-template');
+    if (waEl) waEl.value = currentEvent.wa_template || '';
+    const pinOldEl = document.getElementById('ev-pin-old');
+    if (pinOldEl) pinOldEl.value = '';
+    const pinNewEl = document.getElementById('ev-pin-new');
+    if (pinNewEl) pinNewEl.value = '';
   }
   openOv('m-event');
 }
 
 async function saveEvent() {
+  const pinOld = document.getElementById('ev-pin-old').value;
+  const pinNew = document.getElementById('ev-pin-new').value;
+  if (pinNew) {
+    if (pinOld !== ADMIN_PIN) { toast('PIN lama salah, PIN tidak diubah', true); return; }
+    if (pinNew.length < 4) { toast('PIN baru minimal 4 karakter', true); return; }
+  }
   const ev = {
     id: currentEvent?.id || undefined,
-    name: document.getElementById('ev-name').value || 'Sakinah Family Camp #3',
-    tagline: document.getElementById('ev-tagline').value || 'Bukit Baros · Sukabumi · Jawa Barat · 2026',
-    camp_lat: parseFloat(document.getElementById('ev-lat').value) || CAMP_CENTER[0],
-    camp_lon: parseFloat(document.getElementById('ev-lon').value) || CAMP_CENTER[1],
-    camp_zoom: CAMP_ZOOM
+    name: document.getElementById('ev-name').value || currentEvent?.name || 'Sakinah Family Camp',
+    tagline: document.getElementById('ev-tagline').value || currentEvent?.tagline || '',
+    camp_lat: parseFloat(document.getElementById('ev-lat').value) || currentEvent?.camp_lat || CAMP_CENTER[0],
+    camp_lon: parseFloat(document.getElementById('ev-lon').value) || currentEvent?.camp_lon || CAMP_CENTER[1],
+    camp_zoom: currentEvent?.camp_zoom || CAMP_ZOOM,
+    default_tent_size: document.getElementById('ev-tent-size').value || '3×3m',
+    wa_template: document.getElementById('ev-wa-template').value || '',
+    admin_pin: pinNew || currentEvent?.admin_pin || ADMIN_PIN
   };
   await dbUpsertEvent(ev);
   await loadCurrentEvent();
   closeOv('m-event');
-  toast('Event diperbarui');
+  toast('Pengaturan event disimpan');
 }
 
 // ══════════════════════════════════════════════
 //   HELPERS
 // ══════════════════════════════════════════════
-function centerMap() { map.setView(CAMP_CENTER, CAMP_ZOOM); }
+function centerMap() {
+  const lat = currentEvent?.camp_lat || CAMP_CENTER[0];
+  const lon = currentEvent?.camp_lon || CAMP_CENTER[1];
+  const zoom = currentEvent?.camp_zoom || CAMP_ZOOM;
+  map.setView([lat, lon], zoom);
+}
 function locateMe() {
   if (!navigator.geolocation) { toast('GPS tidak didukung browser ini', true); return; }
   toast('📍 Mencari lokasi Anda...');
