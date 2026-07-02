@@ -488,23 +488,6 @@
     </div>
 
     <div class="sb-section">
-      <div class="sb-title" onclick="toggleLayerList()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none">
-        Layer Peta
-        <span id="layer-list-chevron" style="font-size:10px;transition:transform .2s;transform:rotate(-90deg)">▼</span>
-      </div>
-      <div id="layer-list" style="display:none"></div>
-    </div>
-
-    <div class="sb-section">
-      <div class="sb-title" onclick="toggleOvList()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none">
-          Overlay Gambar
-          <span id="overlay-list-chevron" style="font-size:10px;transition:transform .2s;transform:rotate(-90deg)">▼</span>
-      </div>
-      <div id="overlay-list" style="display:none"></div>
-      <button id="btn-align-rot" onclick="alignRotationCenters()" style="width:100%;padding:8px 12px;margin-top:8px;border-radius:6px;border:1px solid var(--hairline);background:var(--surface-1);color:var(--ink);cursor:pointer;font-size:12px;font-weight:500;display:none">⚙️ Samakan Titik Putar</button>
-    </div>
-
-    <div class="sb-section">
       <div class="sb-title">Tools</div>
       <button class="tool-btn" id="btn-edit-mode" onclick="toggleEditMode()" style="font-weight:600;color:var(--ink-muted);margin-bottom:8px"><i data-lucide="pencil" class="lucide"></i>Mode Edit: <span id="edit-mode-lbl">OFF</span></button>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
@@ -517,6 +500,25 @@
         <button class="draw-tool-btn" onclick="openOverlayModal()" title="Tambah Overlay Gambar"><i data-lucide="image-plus" class="lucide" style="width:16px;height:16px"></i></button>
       </div>
       <button class="tool-btn" id="btn-add" onclick="toggleAddMode()" style="justify-content:center"><i data-lucide="tent" class="lucide"></i>Tambah Kavling</button>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-title" onclick="toggleOvList()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none">
+          Overlay Gambar
+          <span id="overlay-list-chevron" style="font-size:10px;transition:transform .2s;transform:rotate(-90deg)">▼</span>
+      </div>
+      <div id="overlay-section-body" style="display:none">
+        <div id="overlay-list"></div>
+        <button id="btn-align-rot" onclick="alignRotationCenters()" style="width:100%;padding:8px 12px;margin-top:4px;border-radius:6px;border:1px solid var(--hairline);background:var(--surface-1);color:var(--ink);cursor:pointer;font-size:12px;font-weight:500;display:none">⚙️ Samakan Titik Putar</button>
+      </div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-title" onclick="toggleLayerList()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none">
+        Layer Peta
+        <span id="layer-list-chevron" style="font-size:10px;transition:transform .2s;transform:rotate(-90deg)">▼</span>
+      </div>
+      <div id="layer-list" style="display:none"></div>
     </div>
 
     <div class="sb-section" style="margin-top:auto;border-bottom:none">
@@ -2285,7 +2287,7 @@ function toggleLayerList() {
 }
 function toggleOvList() {
   ovListCollapsed = !ovListCollapsed;
-  const el = document.getElementById('overlay-list');
+  const el = document.getElementById('overlay-section-body');
   const ch = document.getElementById('overlay-list-chevron');
   if (el) el.style.display = ovListCollapsed ? 'none' : '';
   if (ch) ch.style.transform = ovListCollapsed ? 'rotate(-90deg)' : '';
