@@ -773,6 +773,7 @@
   <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--hairline);flex-shrink:0;background:var(--canvas)">
     <button onclick="closeDataPage()" style="border:none;background:transparent;cursor:pointer;color:var(--ink-muted);padding:4px;border-radius:8px;display:flex"><i data-lucide="arrow-left" class="lucide" style="width:22px;height:22px"></i></button>
     <span style="font-size:16px;font-weight:700;flex:1">Data Peserta & Panitia</span>
+    <button onclick="resetAllParticipants()" title="Kosongkan semua data peserta" style="border:none;background:transparent;cursor:pointer;color:var(--red,#ef4444);padding:6px 8px;border-radius:8px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px"><i data-lucide="trash-2" class="lucide" style="width:15px;height:15px"></i></button>
     <button onclick="openOv('m-csv')" style="border:none;background:var(--primary);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px"><i data-lucide="upload" class="lucide" style="width:14px;height:14px"></i> Import</button>
   </div>
   <!-- Stats -->
@@ -970,7 +971,8 @@ async function dbLoadMapLayers() {
 async function dbUpsertMapLayer(l) {
   const { error } = await sb.from('map_layers').upsert({
     id: l.id, type: l.type, name: l.name, color: l.color, coords: l.coords,
-    visible: l.visible, group_name: l.group_name || null, category: l.category || 'area', updated_at: new Date().toISOString()
+    visible: l.visible, group_name: l.group_name || null, category: l.category || 'area',
+    icon: l.icon || null, updated_at: new Date().toISOString()
   }, { onConflict: 'id' });
   if (error) console.error('dbUpsertMapLayer:', error);
 }
@@ -2131,6 +2133,24 @@ const CATEGORY_ICONS  = { area: '🌿', bangunan: '🏠', jalur: '〰️' };
 // Buat/refresh Leaflet layer untuk satu entri mapLayers (mutasi l.layer)
 function renderMapLayerShape(l) {
   if (l.layer) map.removeLayer(l.layer);
+
+  if (l.type === 'marker') {
+    const ico = l.icon || '📍';
+    const leafIcon = L.divIcon({
+      html: `<div style="font-size:24px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,.45));cursor:move;user-select:none">${ico}</div>`,
+      className: '', iconAnchor: [12, 24]
+    });
+    l.layer = L.marker(l.coords, { icon: leafIcon, draggable: true });
+    l.layer.bindTooltip(l.name, { sticky: true });
+    l.layer.on('dragend', async ev => {
+      const pos = ev.target.getLatLng();
+      l.coords = [pos.lat, pos.lng];
+      await dbUpsertMapLayer(l);
+    });
+    if (l.visible) l.layer.addTo(map);
+    return l.layer;
+  }
+
   const cat = l.category || (l.type === 'path' ? 'jalur' : 'area');
   const s = CATEGORY_STYLES[cat] || CATEGORY_STYLES.area;
   if (l.type === 'area') {
@@ -2274,9 +2294,9 @@ function addSymbolMode(type) {
   cancelSymbolMode();
   _symbolMode = type;
   document.querySelectorAll('.draw-tool-btn').forEach(b => b.classList.remove('on'));
-  const btnMap = { marker: 0, text: 1, arrow: 2, circle: 3 };
+  const btnMap = { marker: 2, text: 3, arrow: 4, circle: 5 };
   const btns = document.querySelectorAll('.draw-tool-btn');
-  if (btns[btnMap[type]]) btns[btnMap[type]].classList.add('on');
+  if (btns[btnMap[type]] !== undefined) btns[btnMap[type]].classList.add('on');
   map.getContainer().style.cursor = 'crosshair';
   const labels = { marker: 'pin lokasi', text: 'label teks', arrow: 'arah/panah', circle: 'lingkaran area' };
   toast(`Klik di peta untuk menempatkan ${labels[type] || type}`);
@@ -2291,16 +2311,25 @@ function cancelSymbolMode() {
   document.querySelectorAll('.draw-tool-btn').forEach(b => b.classList.remove('on'));
 }
 
-function placeSymbol(type, latlng) {
+async function placeSymbol(type, latlng) {
   _symbolMode = null; _symbolHandler = null;
   map.getContainer().style.cursor = '';
   document.querySelectorAll('.draw-tool-btn').forEach(b => b.classList.remove('on'));
 
   if (type === 'marker') {
-    const m = L.marker(latlng, { draggable: true }).addTo(map);
-    const label = prompt('Nama lokasi / keterangan:');
-    if (label) m.bindPopup(`<b>${label}</b>`).openPopup();
-    m.on('dblclick', () => { if (confirm('Hapus marker ini?')) map.removeLayer(m); });
+    const label = prompt('Nama tag lokasi:');
+    if (!label || !label.trim()) return;
+    const ico = prompt('Ikon (emoji, kosongkan untuk 📍):', '') || '📍';
+    const l = {
+      id: 'marker_' + Date.now(), type: 'marker', name: label.trim(),
+      color: '#ef4444', coords: [latlng.lat, latlng.lng],
+      visible: true, layer: null, category: 'marker', group_name: null, icon: ico.trim() || '📍'
+    };
+    renderMapLayerShape(l);
+    mapLayers.push(l);
+    await dbUpsertMapLayer(l);
+    renderLayerList();
+    toast(`📍 "${l.name}" ditambahkan`);
 
   } else if (type === 'text') {
     const txt = prompt('Teks label:');
@@ -2414,15 +2443,20 @@ let _dragLayerId = null;
 
 function renderLayerList() {
   const el = document.getElementById('layer-list'); if (!el) return;
-  if (!mapLayers.length) { el.innerHTML = ''; return; }
 
   const q = _layerFilter.toLowerCase();
   const CAT_ORDER = ['bangunan','area','jalur'];
   const catColors = { area:'#22c55e', bangunan:'#3b82f6', jalur:'#f59e0b' };
 
+  // Pisahkan marker dari layer area/jalur
+  const markers = mapLayers.filter(l => l.type === 'marker' && (!q || l.name.toLowerCase().includes(q)));
+  const layerItems = mapLayers.filter(l => l.type !== 'marker');
+
+  if (!layerItems.length && !markers.length) { el.innerHTML = ''; return; }
+
   // Build grouped structure (preserve insertion order, no sort by visibility)
   const byCategory = {};
-  mapLayers.forEach(l => {
+  layerItems.forEach(l => {
     if (q && !l.name.toLowerCase().includes(q)) return;
     const cat = l.category || (l.type === 'path' ? 'jalur' : 'area');
     if (!byCategory[cat]) byCategory[cat] = {};
@@ -2481,7 +2515,52 @@ function renderLayerList() {
     <input value="${_layerFilter}" oninput="_layerFilter=this.value;renderLayerList()" placeholder="Cari layer..." style="width:100%;padding:5px 8px;border:1px solid var(--hairline);border-radius:6px;font-size:12px;background:var(--surface-1);color:var(--ink);box-sizing:border-box">
   </div>`;
 
-  el.innerHTML = filterHtml + (CAT_ORDER.filter(cat => byCategory[cat]).map(cat => {
+  // Tag Lokasi section
+  let tagHtml = '';
+  if (markers.length || !q) {
+    const tagKey = 'cat::marker';
+    const isTagCollapsed = collapsedGroups.has(tagKey);
+    const allTagVis = markers.length ? markers.every(l => l.visible) : true;
+    const anyTagVis = markers.some(l => l.visible);
+    const tagItems = markers.map(l => `
+    <div draggable="true"
+         ondragstart="event.stopPropagation();_dragMarkerId='${l.id}';event.dataTransfer.effectAllowed='move'"
+         ondragend="document.querySelectorAll('.marker-drop-target').forEach(x=>x.classList.remove('marker-drop-target'))"
+         style="cursor:grab">
+      <div class="layer-item">
+        <span style="color:var(--ink-muted);font-size:12px;cursor:grab;margin-right:2px">⠿</span>
+        <span style="font-size:16px;line-height:1;margin-right:3px">${l.icon || '📍'}</span>
+        <span class="layer-lbl" style="flex:1;color:${l.visible?'var(--ink)':'var(--ink-muted)'};opacity:${l.visible?1:0.5};cursor:pointer"
+              onclick="zoomToMarker('${l.id}')"
+              title="Zoom ke marker">${l.name}</span>
+        <button class="lbtn" onclick="event.stopPropagation();renameMarker('${l.id}')" title="Ganti nama"><i data-lucide="pencil" class="lucide" style="width:12px;height:12px"></i></button>
+        <button class="lbtn ${l.visible?'active':''}" onclick="event.stopPropagation();toggleMarkerVis('${l.id}')" title="${l.visible?'Sembunyikan':'Tampilkan'}"><i data-lucide="eye${l.visible?'':'-off'}" class="lucide" style="width:13px;height:13px"></i></button>
+        <button class="lbtn" onclick="event.stopPropagation();deleteMarker('${l.id}')" title="Hapus" style="color:var(--red)"><i data-lucide="trash-2" class="lucide" style="width:12px;height:12px"></i></button>
+      </div>
+    </div>`).join('');
+
+    tagHtml = `
+    <div style="margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:8px;background:#ef444418;border-left:3px solid #ef4444;margin-bottom:3px;cursor:pointer;transition:background .15s"
+           onclick="toggleGroupCollapse('${tagKey}')">
+        <span style="font-size:13px">📍</span>
+        <span style="font-size:12px;font-weight:700;color:var(--ink);flex:1">Tag Lokasi</span>
+        <span style="font-size:10px;color:var(--ink-muted)">${markers.length}</span>
+        ${markers.length ? `<button class="lbtn ${anyTagVis?'active':''}" onclick="event.stopPropagation();toggleAllMarkerVis(${allTagVis})"><i data-lucide="eye${allTagVis?'':'-off'}" class="lucide" style="width:13px;height:13px"></i></button>` : ''}
+        <span style="font-size:9px;color:var(--ink-muted);transform:rotate(${isTagCollapsed?'-90':'0'}deg);transition:transform .2s">▼</span>
+      </div>
+      ${isTagCollapsed ? '' : (markers.length
+        ? `<div id="marker-list-body"
+               ondragover="event.preventDefault();this.classList.add('marker-drop-target')"
+               ondragleave="this.classList.remove('marker-drop-target')"
+               ondrop="event.preventDefault();this.classList.remove('marker-drop-target');reorderMarkerDrop(event)"
+               style="min-height:4px;border-radius:4px;transition:background .15s">${tagItems}</div>`
+        : '<div style="padding:4px 8px;font-size:11px;color:var(--ink-muted)">Belum ada tag. Gunakan alat Pin di toolbar.</div>'
+      )}
+    </div>`;
+  }
+
+  el.innerHTML = filterHtml + tagHtml + (CAT_ORDER.filter(cat => byCategory[cat]).map(cat => {
     const groups = byCategory[cat];
     const catKey = 'cat::' + cat;
     const isCatCollapsed = collapsedGroups.has(catKey);
@@ -2503,7 +2582,7 @@ function renderLayerList() {
       </div>
       ${isCatCollapsed ? '' : Object.entries(groups).map(([grp, layers]) => renderGroup(grp, layers, cat)).join('')}
     </div>`;
-  }).join('') || '<div style="padding:8px;font-size:12px;color:var(--ink-muted);text-align:center">Tidak ada layer</div>');
+  }).join('') || (layerItems.length ? '' : '<div style="padding:8px;font-size:12px;color:var(--ink-muted);text-align:center">Tidak ada layer</div>'));
 
   // CSS for drop highlight
   if (!document.getElementById('layer-dnd-style')) {
@@ -2513,6 +2592,66 @@ function renderLayerList() {
     document.head.appendChild(s);
   }
   lucide.createIcons();
+}
+
+// ── Marker (Tag Lokasi) helpers ──
+let _dragMarkerId = null;
+
+function toggleMarkerVis(id) {
+  const l = mapLayers.find(x => x.id === id); if (!l) return;
+  l.visible = !l.visible;
+  l.visible ? l.layer.addTo(map) : map.removeLayer(l.layer);
+  dbUpsertMapLayer(l);
+  renderLayerList();
+}
+function toggleAllMarkerVis(allVisible) {
+  const markers = mapLayers.filter(l => l.type === 'marker');
+  markers.forEach(l => {
+    l.visible = !allVisible;
+    l.visible ? l.layer.addTo(map) : map.removeLayer(l.layer);
+    dbUpsertMapLayer(l);
+  });
+  renderLayerList();
+}
+function renameMarker(id) {
+  const l = mapLayers.find(x => x.id === id); if (!l) return;
+  const newName = prompt('Nama tag:', l.name);
+  if (!newName || !newName.trim()) return;
+  const newIco = prompt('Ikon (emoji):', l.icon || '📍') || l.icon || '📍';
+  l.name = newName.trim();
+  l.icon = newIco.trim() || '📍';
+  // Refresh marker di peta
+  renderMapLayerShape(l);
+  dbUpsertMapLayer(l);
+  renderLayerList();
+}
+function deleteMarker(id) {
+  const l = mapLayers.find(x => x.id === id); if (!l) return;
+  if (!confirm(`Hapus tag "${l.name}"?`)) return;
+  if (l.layer) map.removeLayer(l.layer);
+  mapLayers = mapLayers.filter(x => x.id !== id);
+  dbDeleteMapLayer(id);
+  renderLayerList();
+}
+function zoomToMarker(id) {
+  const l = mapLayers.find(x => x.id === id); if (!l) return;
+  const coords = Array.isArray(l.coords[0]) ? l.coords[0] : l.coords;
+  map.flyTo(coords, 19, { duration: 0.8 });
+}
+function reorderMarkerDrop(ev) {
+  if (!_dragMarkerId) return;
+  const srcIdx = mapLayers.findIndex(x => x.id === _dragMarkerId);
+  _dragMarkerId = null;
+  if (srcIdx === -1) return;
+  // Pindahkan ke akhir marker group (visual reorder di array)
+  const markers = mapLayers.filter(l => l.type === 'marker');
+  const others  = mapLayers.filter(l => l.type !== 'marker');
+  // Cari target dari posisi drop (y coordinate)
+  const body = document.getElementById('marker-list-body');
+  if (!body) { renderLayerList(); return; }
+  const items = [...body.querySelectorAll('[draggable]')];
+  const dragEl = items[srcIdx]; // relative index not reliable, just re-render
+  renderLayerList();
 }
 
 // Toggle visibility tanpa re-render posisi (hanya update visual)
@@ -3241,16 +3380,84 @@ function renderDataList() {
 
   const appUrl = window.location.origin + window.location.pathname;
 
-  el.innerHTML = list.map(p => {
+  const isMobile = window.innerWidth < 768;
+  const availTents = tents.filter(t => t.status === 'available' && t.type === 'peserta').sort((a,b) => a.id.localeCompare(b.id));
+
+  // ── Helper per baris ──────────────────────────────────────────────
+  const buildRow = p => {
     const tent = p.claimed_tent_id ? tents.find(t => t.id === p.claimed_tent_id) : null;
     const tentLabel = tent ? tent.id : (p.claimed_tent_id || null);
     const memberNamesRaw = typeof p.member_names === 'string' ? p.member_names : (Array.isArray(p.member_names) ? p.member_names.join('|') : '');
     const memberList = memberNamesRaw ? memberNamesRaw.split('|').map(s => s.trim()).filter(Boolean) : [];
     const memberCount = p.members || memberList.length || 0;
-    const availTents = tents.filter(t => t.status === 'available' && t.type === 'peserta').sort((a,b) => a.id.localeCompare(b.id));
     const waText = encodeURIComponent(`Assalamu'alaikum Keluarga *${p.family_name}* 🌿\n\nBerikut kode voucher untuk memilih kavling tenda di *Sakinah Family Camp #3*:\n\n🎟️ Kode: *${p.code}*\n\n🔗 Akses peta: ${appUrl}\n\nMasukkan kode di menu Peserta, lalu pilih kavling yang tersedia. Sampai jumpa di camp! 🏕️`);
     const isExpanded = dpExpanded.has(String(p.id));
     const roleLabel = p.role === 'panitia' ? `<span style="font-size:10px;background:var(--blue);color:#fff;padding:1px 6px;border-radius:10px;font-weight:600">Panitia</span>` : '';
+    return { tent, tentLabel, memberList, memberCount, waText, isExpanded, roleLabel };
+  };
+
+  // ── DESKTOP: tabel ────────────────────────────────────────────────
+  if (!isMobile) {
+    const waIcon = `<svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.553 4.117 1.523 5.849L.057 23.5l5.797-1.44A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.006-1.37l-.36-.213-3.716.923.96-3.617-.234-.371A9.818 9.818 0 1 1 12 21.818z"/></svg>`;
+    el.innerHTML = `
+      <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--hairline)">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="background:var(--surface-1);border-bottom:2px solid var(--hairline)">
+              <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted);white-space:nowrap">#</th>
+              <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted);white-space:nowrap">Voucher</th>
+              <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted)">Nama Keluarga</th>
+              <th style="padding:10px 12px;text-align:center;font-weight:700;color:var(--ink-muted)">Anggota</th>
+              <th style="padding:10px 12px;text-align:center;font-weight:700;color:var(--ink-muted)">Kavling</th>
+              <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--ink-muted)">Nama Anggota</th>
+              <th style="padding:10px 12px;text-align:center;font-weight:700;color:var(--ink-muted)">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map((p, i) => {
+              const { tentLabel, memberList, memberCount, waText, roleLabel } = buildRow(p);
+              const rowBg = i % 2 === 0 ? 'var(--canvas)' : 'var(--surface-1)';
+              const assignCell = tentLabel
+                ? `<div style="display:flex;gap:4px;align-items:center">
+                     <span style="font-size:12px;padding:2px 8px;border-radius:10px;font-weight:700;background:var(--green);color:#fff">${tentLabel}</span>
+                     <button onclick="adminUnassignTent('${p.id}','${p.claimed_tent_id}')" title="Lepas kavling" style="padding:3px 6px;border:1px solid var(--hairline);background:transparent;border-radius:5px;cursor:pointer;color:var(--ink-muted);font-size:11px">✕</button>
+                     <button onclick="zoomToTent('${p.claimed_tent_id}')" title="Lihat peta" style="padding:3px 6px;border:1px solid var(--primary);background:transparent;border-radius:5px;cursor:pointer;color:var(--primary);font-size:11px">🗺</button>
+                   </div>`
+                : `<select onchange="adminAssignTent('${p.id}',this.value);this.value=''"
+                     style="font-size:12px;padding:4px 6px;border:1px solid var(--hairline);border-radius:6px;background:var(--surface-1);color:var(--ink);cursor:pointer;max-width:130px">
+                     <option value="">Assign…</option>
+                     ${availTents.map(t => `<option value="${t.id}">${t.id} (${t.size})</option>`).join('')}
+                   </select>`;
+              return `<tr style="background:${rowBg};border-bottom:1px solid var(--hairline)">
+                <td style="padding:8px 12px;color:var(--ink-muted);font-size:12px">${i+1}</td>
+                <td style="padding:8px 12px;font-family:monospace;font-weight:700;color:var(--primary);letter-spacing:1px;white-space:nowrap">${p.code}</td>
+                <td style="padding:8px 12px;font-weight:600">${p.family_name} ${roleLabel}</td>
+                <td style="padding:8px 12px;text-align:center;color:${memberCount ? 'var(--ink)' : 'var(--ink-muted)'};font-weight:${memberCount ? '600' : '400'}">${memberCount || '—'}</td>
+                <td style="padding:6px 12px">${assignCell}</td>
+                <td style="padding:8px 12px;font-size:11px;color:var(--ink-muted);max-width:200px">
+                  ${memberList.length ? memberList.join(', ') : '—'}
+                </td>
+                <td style="padding:6px 12px;text-align:center;white-space:nowrap">
+                  <a href="https://wa.me/?text=${waText}" target="_blank" title="Kirim WA"
+                     style="display:inline-flex;align-items:center;gap:3px;padding:4px 8px;background:#25D366;color:#fff;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;margin-right:4px">
+                     ${waIcon} WA
+                  </a>
+                  <button onclick="deleteParticipant('${p.id}','${p.family_name.replace(/'/g,"\\'")}','${p.claimed_tent_id||''}')"
+                     title="Hapus" style="padding:4px 8px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:6px;cursor:pointer;color:var(--red,#ef4444);font-size:11px;font-weight:600">
+                     Hapus
+                  </button>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+    return;
+  }
+
+  // ── MOBILE: card ──────────────────────────────────────────────────
+  el.innerHTML = list.map(p => {
+    const { tentLabel, memberList, memberCount, waText, isExpanded, roleLabel } = buildRow(p);
 
     const detailHtml = isExpanded ? `
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--hairline)">
@@ -3349,9 +3556,11 @@ function renderKavlingList() {
 
   const total = tents.length;
   const occupied = tents.filter(t => t.status === 'occupied').length;
-  const panitia = tents.filter(t => t.type === 'panitia').length;
+  const panitia  = tents.filter(t => t.type === 'panitia').length;
 
-  el.innerHTML = `
+  const isMobile = window.innerWidth < 768;
+
+  const statsHtml = `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px">
       <div style="background:var(--canvas);border-radius:8px;padding:8px;text-align:center">
         <div style="font-size:18px;font-weight:700">${total}</div>
@@ -3366,56 +3575,109 @@ function renderKavlingList() {
         <div style="font-size:10px;color:var(--ink-muted)">KOSONG</div>
       </div>
     </div>
-    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-      <button onclick="bulkResizeTents()" style="font-size:11px;padding:5px 10px;border:1px solid var(--primary);background:transparent;border-radius:6px;cursor:pointer;color:var(--primary);font-weight:600">Seragamkan Ukuran</button>
-      <button onclick="resetAllTents()" style="font-size:11px;padding:5px 10px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:6px;cursor:pointer;color:var(--red,#ef4444);font-weight:600">Reset Semua Kavling</button>
-    </div>
-    ${list.map(t => {
-      const isExp = dpExpanded.has('tent-' + t.id);
-      const statusColor = t.status === 'occupied' ? 'var(--green)' : t.type === 'panitia' ? 'var(--blue)' : 'var(--ink-muted)';
-      const statusLabel = t.status === 'occupied' ? 'Terisi' : t.type === 'panitia' ? 'Panitia' : 'Kosong';
-      const detail = isExp ? `
-        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--hairline)">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
-            <div style="background:var(--canvas);border-radius:8px;padding:8px">
-              <div style="font-size:10px;color:var(--ink-muted);margin-bottom:2px">UKURAN</div>
-              <input value="${t.size||'4×4m'}" onchange="updateTentSize('${t.id}',this.value)" style="font-size:13px;font-weight:700;width:100%;border:none;background:transparent;color:var(--ink);padding:0">
-            </div>
-            <div style="background:var(--canvas);border-radius:8px;padding:8px">
-              <div style="font-size:10px;color:var(--ink-muted);margin-bottom:2px">TIPE</div>
-              <select onchange="updateTentType('${t.id}',this.value)" style="font-size:12px;font-weight:600;border:none;background:transparent;color:var(--ink);padding:0;width:100%">
-                <option value="peserta" ${t.type==='peserta'?'selected':''}>Peserta</option>
-                <option value="panitia" ${t.type==='panitia'?'selected':''}>Panitia</option>
-              </select>
-            </div>
-          </div>
-          ${t.status === 'occupied' ? `
-            <div style="margin-bottom:10px;background:var(--canvas);border-radius:8px;padding:8px">
-              <div style="font-size:10px;color:var(--ink-muted);margin-bottom:2px">DITEMPATI</div>
-              <div style="font-size:13px;font-weight:600">${t.family||'—'}</div>
-              <div style="font-size:11px;color:var(--ink-muted)">${t.members||0} anggota</div>
-            </div>` : ''}
-          <div style="display:flex;gap:6px">
-            <button onclick="event.stopPropagation();zoomToTent('${t.id}')" style="flex:1;padding:7px;border:1px solid var(--primary);background:transparent;border-radius:8px;cursor:pointer;color:var(--primary);font-size:12px">Lihat Peta</button>
-            <button onclick="event.stopPropagation();resetTent('${t.id}')" style="flex:1;padding:7px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:8px;cursor:pointer;color:var(--red,#ef4444);font-size:12px;font-weight:600">Reset Kavling</button>
-          </div>
-        </div>` : '';
-      return `<div onclick="toggleTentExpand('${t.id}')" style="background:var(--surface-1);border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:3px solid ${statusColor};cursor:pointer">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
-              <span style="font-size:13px;font-weight:700;font-family:monospace">${t.id}</span>
-              <span style="font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;background:${statusColor};color:#fff">${statusLabel}</span>
-              <span style="font-size:10px;color:var(--ink-muted)">${t.size||'4×4m'}</span>
-            </div>
-            ${t.family ? `<div style="font-size:13px;font-weight:500">${t.family}</div>` : `<div style="font-size:12px;color:var(--ink-muted)">Belum ada penghuni</div>`}
-          </div>
-          <span style="color:var(--ink-muted);font-size:16px;transition:transform .2s;transform:rotate(${isExp?'90':'0'}deg)">›</span>
-        </div>
-        ${detail}
+    <div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:10px">
+      <button onclick="bulkResizeTents()" style="font-size:11px;padding:5px 12px;border:1px solid var(--primary);background:transparent;border-radius:6px;cursor:pointer;color:var(--primary);font-weight:600">Seragamkan Ukuran</button>
+      <button onclick="resetAllTents()" style="font-size:11px;padding:5px 12px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:6px;cursor:pointer;color:var(--red,#ef4444);font-weight:600">Reset Semua</button>
+    </div>`;
+
+  if (!isMobile) {
+    // ── DESKTOP: tabel ──
+    el.innerHTML = statsHtml + `
+      <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--hairline)">
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+          <thead>
+            <tr style="background:var(--surface-1);border-bottom:2px solid var(--hairline)">
+              <th style="padding:8px 10px;text-align:left;font-weight:700;color:var(--ink-muted)">ID</th>
+              <th style="padding:8px 10px;text-align:left;font-weight:700;color:var(--ink-muted)">Status</th>
+              <th style="padding:8px 10px;text-align:left;font-weight:700;color:var(--ink-muted)">Penghuni</th>
+              <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--ink-muted)">Anggota</th>
+              <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--ink-muted)">Ukuran</th>
+              <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--ink-muted)">Tipe</th>
+              <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--ink-muted)">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map((t, i) => {
+              const sc = t.status === 'occupied' ? 'var(--green)' : t.type === 'panitia' ? 'var(--blue)' : '#9ca3af';
+              const sl = t.status === 'occupied' ? 'Terisi' : t.type === 'panitia' ? 'Panitia' : 'Kosong';
+              return `<tr style="background:${i%2===0?'var(--canvas)':'var(--surface-1)'};border-bottom:1px solid var(--hairline)">
+                <td style="padding:8px 10px;font-family:monospace;font-weight:700;white-space:nowrap">
+                  <span style="cursor:pointer;color:var(--primary)" onclick="zoomToTent('${t.id}')">${t.id}</span>
+                </td>
+                <td style="padding:8px 10px">
+                  <span style="font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;background:${sc};color:#fff">${sl}</span>
+                </td>
+                <td style="padding:8px 10px">${t.family ? `<span style="font-weight:500">${t.family}</span>` : `<span style="color:var(--ink-muted)">—</span>`}</td>
+                <td style="padding:8px 10px;text-align:center;color:${t.members?'var(--ink)':'var(--ink-muted)'};font-weight:${t.members?'600':'400'}">${t.members||'—'}</td>
+                <td style="padding:4px 6px;text-align:center">
+                  <input value="${t.size||'4×4m'}" onchange="updateTentSize('${t.id}',this.value)"
+                    style="width:60px;padding:4px 6px;border:1px solid var(--hairline);border-radius:6px;font-size:12px;text-align:center;background:var(--surface-1);color:var(--ink)">
+                </td>
+                <td style="padding:4px 6px;text-align:center">
+                  <select onchange="updateTentType('${t.id}',this.value)"
+                    style="padding:4px 6px;border:1px solid var(--hairline);border-radius:6px;font-size:12px;background:var(--surface-1);color:var(--ink);cursor:pointer">
+                    <option value="peserta" ${t.type==='peserta'||!t.type?'selected':''}>Peserta</option>
+                    <option value="panitia" ${t.type==='panitia'?'selected':''}>Panitia</option>
+                  </select>
+                </td>
+                <td style="padding:4px 6px;text-align:center">
+                  <button onclick="resetTent('${t.id}')"
+                    style="padding:4px 8px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:6px;cursor:pointer;color:var(--red,#ef4444);font-size:11px;font-weight:600">Reset</button>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
       </div>`;
-    }).join('')}
-  `;
+    return;
+  }
+
+  // ── MOBILE: card ──
+  el.innerHTML = statsHtml + list.map(t => {
+    const isExp = dpExpanded.has('tent-' + t.id);
+    const statusColor = t.status === 'occupied' ? 'var(--green)' : t.type === 'panitia' ? 'var(--blue)' : 'var(--ink-muted)';
+    const statusLabel = t.status === 'occupied' ? 'Terisi' : t.type === 'panitia' ? 'Panitia' : 'Kosong';
+    const detail = isExp ? `
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--hairline)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+          <div style="background:var(--canvas);border-radius:8px;padding:8px">
+            <div style="font-size:10px;color:var(--ink-muted);margin-bottom:2px">UKURAN</div>
+            <input value="${t.size||'4×4m'}" onchange="updateTentSize('${t.id}',this.value)" style="font-size:13px;font-weight:700;width:100%;border:none;background:transparent;color:var(--ink);padding:0">
+          </div>
+          <div style="background:var(--canvas);border-radius:8px;padding:8px">
+            <div style="font-size:10px;color:var(--ink-muted);margin-bottom:2px">TIPE</div>
+            <select onchange="updateTentType('${t.id}',this.value)" style="font-size:12px;font-weight:600;border:none;background:transparent;color:var(--ink);padding:0;width:100%">
+              <option value="peserta" ${t.type==='peserta'||!t.type?'selected':''}>Peserta</option>
+              <option value="panitia" ${t.type==='panitia'?'selected':''}>Panitia</option>
+            </select>
+          </div>
+        </div>
+        ${t.status === 'occupied' ? `
+          <div style="margin-bottom:10px;background:var(--canvas);border-radius:8px;padding:8px">
+            <div style="font-size:10px;color:var(--ink-muted);margin-bottom:2px">DITEMPATI</div>
+            <div style="font-size:13px;font-weight:600">${t.family||'—'}</div>
+            <div style="font-size:11px;color:var(--ink-muted)">${t.members||0} anggota</div>
+          </div>` : ''}
+        <div style="display:flex;gap:6px">
+          <button onclick="event.stopPropagation();zoomToTent('${t.id}')" style="flex:1;padding:7px;border:1px solid var(--primary);background:transparent;border-radius:8px;cursor:pointer;color:var(--primary);font-size:12px">Lihat Peta</button>
+          <button onclick="event.stopPropagation();resetTent('${t.id}')" style="flex:1;padding:7px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:8px;cursor:pointer;color:var(--red,#ef4444);font-size:12px;font-weight:600">Reset Kavling</button>
+        </div>
+      </div>` : '';
+    return `<div onclick="toggleTentExpand('${t.id}')" style="background:var(--surface-1);border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:3px solid ${statusColor};cursor:pointer">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+            <span style="font-size:13px;font-weight:700;font-family:monospace">${t.id}</span>
+            <span style="font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;background:${statusColor};color:#fff">${statusLabel}</span>
+            <span style="font-size:10px;color:var(--ink-muted)">${t.size||'4×4m'}</span>
+          </div>
+          ${t.family ? `<div style="font-size:13px;font-weight:500">${t.family}</div>` : `<div style="font-size:12px;color:var(--ink-muted)">Belum ada penghuni</div>`}
+        </div>
+        <span style="color:var(--ink-muted);font-size:16px;transition:transform .2s;transform:rotate(${isExp?'90':'0'}deg)">›</span>
+      </div>
+      ${detail}
+    </div>`;
+  }).join('');
 }
 
 function toggleTentExpand(id) {
@@ -3496,6 +3758,32 @@ function toggleDpExpand(id) {
   if (dpExpanded.has(sid)) dpExpanded.delete(sid);
   else dpExpanded.add(sid);
   renderDataList();
+}
+
+async function resetAllParticipants() {
+  const total = allParticipants.length;
+  if (!total) { toast('Belum ada data peserta.'); return; }
+  const confirmMsg = `Hapus SEMUA ${total} data peserta?\n\n⚠️ Termasuk voucher, penugasan kavling, dan semua relasi.\nTindakan ini TIDAK bisa dibatalkan.\n\nKetik "HAPUS" untuk konfirmasi:`;
+  const input = prompt(confirmMsg);
+  if (input !== 'HAPUS') { toast('Dibatalkan.'); return; }
+
+  toast('Menghapus semua data...');
+  // Lepas semua kavling yang tertaut
+  const occupiedTents = tents.filter(t => t.status === 'occupied');
+  occupiedTents.forEach(t => { t.status = 'available'; t.family = ''; t.members = 0; t.member_names = []; });
+  if (occupiedTents.length) await dbUpsertTents(occupiedTents);
+
+  // Hapus semua peserta dari DB
+  const { error } = await sb.from('participants').delete().neq('id', 0);
+  if (error) { toast('Gagal hapus: ' + error.message, true); return; }
+
+  allParticipants = [];
+  dpExpanded.clear();
+  renderAllTents();
+  updateStats();
+  renderDataStats();
+  renderDataList();
+  toast(`✅ ${total} data peserta dihapus. Siap import ulang.`);
 }
 
 async function deleteParticipant(id, name, claimedTentId) {
