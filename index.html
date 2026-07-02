@@ -509,6 +509,16 @@
         <button class="draw-tool-btn" onclick="openOverlayModal()" title="Tambah Overlay Gambar"><i data-lucide="image-plus" class="lucide" style="width:16px;height:16px"></i></button>
       </div>
       <button class="tool-btn" id="btn-add" onclick="toggleAddMode()" style="justify-content:center"><i data-lucide="tent" class="lucide"></i>Tambah Kavling</button>
+      <button class="tool-btn" onclick="openOv('m-bulk-tents')" style="justify-content:center;background:var(--surface-2)"><i data-lucide="layers" class="lucide"></i>Buat Kavling Massal</button>
+    </div>
+
+    <!-- Antrian Kavling Belum Ditempatkan -->
+    <div class="sb-section" id="unplaced-section" style="display:none">
+      <div style="font-size:11px;font-weight:700;color:var(--ink-muted);letter-spacing:.5px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">
+        <span>⏳ BELUM DITEMPATKAN</span>
+        <span id="unplaced-count" style="background:var(--orange);color:#fff;font-size:10px;padding:1px 7px;border-radius:10px;font-weight:700"></span>
+      </div>
+      <div id="unplaced-list" style="display:flex;flex-direction:column;gap:4px"></div>
     </div>
 
     <div class="sb-section">
@@ -764,6 +774,45 @@
 </div>
 
 <!-- Import CSV -->
+<div class="ov" id="m-bulk-tents">
+  <div class="modal" style="max-width:380px;width:100%">
+    <button class="modal-close" onclick="closeOv('m-bulk-tents')">✕</button>
+    <div class="modal-title"><i data-lucide="layers" class="lucide" style="width:20px;height:20px"></i> Buat Kavling Massal</div>
+    <p style="font-size:12px;color:var(--ink-muted);margin-bottom:14px">Kavling dibuat tanpa posisi — tempatkan satu per satu di peta dari panel antrian.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--ink-muted);display:block;margin-bottom:4px">JUMLAH PESERTA</label>
+        <input id="bulk-n-peserta" type="number" min="0" value="0" oninput="updateBulkPreview()" style="width:100%;padding:9px 12px;border:1px solid var(--hairline);border-radius:8px;font-size:16px;text-align:center;background:var(--canvas);color:var(--ink);box-sizing:border-box">
+        <div style="font-size:10px;color:var(--ink-muted);margin-top:3px">Prefix: <input id="bulk-prefix-peserta" value="T-" oninput="updateBulkPreview()" style="width:40px;border:none;border-bottom:1px solid var(--hairline);font-size:11px;background:transparent;color:var(--ink);text-align:center"></div>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--ink-muted);display:block;margin-bottom:4px">JUMLAH PANITIA</label>
+        <input id="bulk-n-panitia" type="number" min="0" value="0" oninput="updateBulkPreview()" style="width:100%;padding:9px 12px;border:1px solid var(--hairline);border-radius:8px;font-size:16px;text-align:center;background:var(--canvas);color:var(--ink);box-sizing:border-box">
+        <div style="font-size:10px;color:var(--ink-muted);margin-top:3px">Prefix: <input id="bulk-prefix-panitia" value="P-" oninput="updateBulkPreview()" style="width:40px;border:none;border-bottom:1px solid var(--hairline);font-size:11px;background:transparent;color:var(--ink);text-align:center"></div>
+      </div>
+    </div>
+    <div style="background:var(--surface-1);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--ink-muted)">
+      <div id="bulk-preview-text">Pilih jumlah kavling di atas</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="confirmBulkCreate()" style="flex:1;padding:10px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Buat Kavling</button>
+      <button onclick="closeOv('m-bulk-tents')" style="flex:1;padding:10px;border:1px solid var(--hairline);background:transparent;border-radius:8px;font-size:14px;cursor:pointer">Batal</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="m-edit-participant">
+  <div class="modal" style="max-width:420px;width:100%">
+    <button class="modal-close" onclick="closeOv('m-edit-participant')">✕</button>
+    <div class="modal-title">✏️ Edit Data Peserta</div>
+    <div id="m-edit-participant-body" style="display:flex;flex-direction:column;gap:10px"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button onclick="saveMobileEditParticipant()" style="flex:1;padding:10px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Simpan</button>
+      <button onclick="closeOv('m-edit-participant')" style="flex:1;padding:10px;border:1px solid var(--hairline);background:transparent;border-radius:8px;font-size:14px;cursor:pointer">Batal</button>
+    </div>
+  </div>
+</div>
+
 <div class="ov" id="m-csv">
   <div class="modal">
     <button class="modal-close" onclick="closeOv('m-csv')">✕</button>
@@ -1299,15 +1348,20 @@ async function initMap() {
     tents = data;
   }
 
-  incidents = await dbLoadIncidents();
+  // Muat semua data independen secara paralel
+  const [inc] = await Promise.all([
+    dbLoadIncidents(),
+    loadCurrentEvent(),
+    loadMapLayers(),
+    loadOverlays()
+  ]);
+  incidents = inc || [];
   updateNotifBadge();
-  await loadCurrentEvent();
 
   initRealtime();
   renderAllTents();
+  renderUnplacedQueue();
   map.on('click', onMapClick);
-  await loadMapLayers();
-  await loadOverlays();
 
   document.getElementById('loading').style.display = 'none';
   document.getElementById('m-login').classList.remove('show');
@@ -1339,6 +1393,7 @@ function tentColor(t) {
 }
 
 function drawTent(t) {
+  if (!t.lat || !t.lon) return; // kavling belum ditempatkan
   const corners = tentCorners(t.lat, t.lon, t.size, t.rotation || 0);
   const { fill, stroke } = tentColor(t);
   const lbl = t.id.replace('-', '');
@@ -2491,11 +2546,112 @@ async function onPathCreated(e) {
   toast('Jalur "' + name + '" ditambahkan.');
 }
 
+let _placingTentId = null;
+
 function toggleAddMode() {
+  _placingTentId = null;
   addMode = !addMode;
   document.getElementById('btn-add').classList.toggle('on', addMode);
   map.getContainer().style.cursor = addMode ? 'crosshair' : '';
   if (addMode) toast('Klik di peta untuk menempatkan kavling baru');
+}
+
+function placeTentFromQueue(tentId) {
+  _placingTentId = tentId;
+  addMode = true;
+  document.getElementById('btn-add').classList.add('on');
+  map.getContainer().style.cursor = 'crosshair';
+  // Tutup data page jika terbuka
+  document.getElementById('m-data')?.classList.remove('show');
+  // Tutup toolbar di mobile
+  const tb = document.getElementById('toolbar');
+  if (tb && window.innerWidth < 768) tb.style.display = 'none';
+  toast(`📍 Klik di peta untuk menempatkan kavling ${tentId}`);
+}
+
+function renderUnplacedQueue() {
+  const unplaced = tents.filter(t => !t.lat && !t.lon);
+  const section = document.getElementById('unplaced-section');
+  const listEl  = document.getElementById('unplaced-list');
+  const countEl = document.getElementById('unplaced-count');
+  if (!section || !listEl) return;
+  if (!unplaced.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  countEl.textContent = unplaced.length;
+  listEl.innerHTML = unplaced.map(t => `
+    <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--canvas);border-radius:7px;border:1px solid var(--hairline)">
+      <span style="font-family:monospace;font-weight:700;font-size:12px;color:${t.type==='panitia'?'var(--blue)':'var(--primary)'};flex:1">${t.id}</span>
+      <span style="font-size:10px;color:var(--ink-muted)">${t.type==='panitia'?'Panitia':'Peserta'}</span>
+      <button onclick="placeTentFromQueue('${t.id}')"
+        style="padding:3px 10px;background:var(--primary);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap">
+        📍 Tempatkan
+      </button>
+      <button onclick="deleteTentFromList('${t.id}')" title="Hapus"
+        style="padding:3px 6px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:5px;cursor:pointer;color:var(--red,#ef4444);font-size:11px">🗑</button>
+    </div>`).join('');
+}
+
+// Buat preview text saat input berubah di modal bulk
+function updateBulkPreview() {
+  const nP = parseInt(document.getElementById('bulk-n-peserta')?.value) || 0;
+  const nPa = parseInt(document.getElementById('bulk-n-panitia')?.value) || 0;
+  const pfP = (document.getElementById('bulk-prefix-peserta')?.value || 'T-').trim();
+  const pfPa = (document.getElementById('bulk-prefix-panitia')?.value || 'P-').trim();
+  const existPeserta = tents.filter(t => t.type === 'peserta').length;
+  const existPanitia = tents.filter(t => t.type === 'panitia').length;
+  const txt = [];
+  if (nP > 0) txt.push(`${nP} kavling peserta: ${pfP}${pad(existPeserta+1)} … ${pfP}${pad(existPeserta+nP)}`);
+  if (nPa > 0) txt.push(`${nPa} kavling panitia: ${pfPa}${pad(existPanitia+1)} … ${pfPa}${pad(existPanitia+nPa)}`);
+  document.getElementById('bulk-preview-text').textContent = txt.length ? txt.join('\n') : 'Pilih jumlah kavling di atas';
+}
+
+async function confirmBulkCreate() {
+  const nP  = parseInt(document.getElementById('bulk-n-peserta')?.value)  || 0;
+  const nPa = parseInt(document.getElementById('bulk-n-panitia')?.value) || 0;
+  if (nP + nPa === 0) { toast('Isi jumlah kavling terlebih dahulu', true); return; }
+  const pfP  = (document.getElementById('bulk-prefix-peserta')?.value  || 'T-').trim();
+  const pfPa = (document.getElementById('bulk-prefix-panitia')?.value || 'P-').trim();
+
+  // Hitung nomor urut berikutnya berdasarkan ID yang sudah ada
+  const nextNum = (prefix) => {
+    const used = new Set(tents.filter(t => t.id.startsWith(prefix)).map(t => parseInt(t.id.replace(prefix,''))||0));
+    let n = 1; while (used.has(n)) n++; return n;
+  };
+
+  const newTents = [];
+  let nPeserta = nextNum(pfP);
+  for (let i = 0; i < nP; i++, nPeserta++) {
+    const id = `${pfP}${pad(nPeserta)}`;
+    if (tents.find(t => t.id === id)) { nPeserta--; nPeserta++; i--; nPeserta++; continue; }
+    newTents.push({ id, lat: null, lon: null, capacity: 4, size: '4×4m', type: 'peserta', facilities: 'Matras, Penerangan', status: 'available', family: null, members: null, rotation: 0, ownership: 'sewa', is_collision_checked: false });
+  }
+  let nPanitia = nextNum(pfPa);
+  for (let i = 0; i < nPa; i++, nPanitia++) {
+    const id = `${pfPa}${pad(nPanitia)}`;
+    if (tents.find(t => t.id === id)) { i--; nPanitia++; continue; }
+    newTents.push({ id, lat: null, lon: null, capacity: 6, size: '4×4m', type: 'panitia', facilities: 'Matras, Penerangan', status: 'available', family: null, members: null, rotation: 0, ownership: 'sewa', is_collision_checked: false });
+  }
+
+  await dbUpsertTents(newTents);
+  newTents.forEach(t => tents.push(t));
+  closeOv('m-bulk-tents');
+  renderUnplacedQueue();
+  updateStats();
+  toast(`✅ ${newTents.length} kavling dibuat — tempatkan dari panel antrian`);
+}
+
+async function resetTentPosition(tentId) {
+  const t = tents.find(x => x.id === tentId); if (!t) return;
+  if (!confirm(`Reset posisi kavling ${tentId}? Kavling akan masuk antrian untuk ditempatkan ulang.`)) return;
+  // Hapus dari peta
+  if (tentMarkers[tentId]) { tentMarkers[tentId].remove(); delete tentMarkers[tentId]; }
+  // Hapus koordinat
+  t.lat = null; t.lon = null;
+  const { error } = await sb.from('tents').update({ lat: null, lon: null }).eq('id', tentId);
+  if (error) { toast('Gagal reset: ' + error.message, true); return; }
+  renderUnplacedQueue();
+  renderKavlingList();
+  toast(`↩️ Posisi kavling ${tentId} direset — siap ditempatkan ulang`);
 }
 
 // ── Annotation / Symbol tools ─────────────────────────────────────
@@ -2606,6 +2762,32 @@ async function placeSymbol(type, latlng) {
 
 async function onMapClick(e) {
   if (!addMode) return;
+  addMode = false;
+  document.getElementById('btn-add').classList.remove('on');
+  map.getContainer().style.cursor = '';
+
+  if (_placingTentId) {
+    // Tempatkan kavling dari antrian
+    const placingId = _placingTentId;
+    _placingTentId = null;
+    const t = tents.find(x => x.id === placingId); if (!t) return;
+    t.lat = e.latlng.lat; t.lon = e.latlng.lng;
+    drawTent(t);
+    if (checkCollision(t.id)) {
+      t.lat = null; t.lon = null;
+      if (tentMarkers[t.id]) { tentMarkers[t.id].remove(); delete tentMarkers[t.id]; }
+      toast('⚠️ Tidak bisa tempatkan di sini (overlap)!', true);
+      renderUnplacedQueue();
+      return;
+    }
+    await dbUpsertTent(t);
+    renderUnplacedQueue();
+    updateStats();
+    toast(`✅ Kavling ${placingId} ditempatkan di peta`);
+    return;
+  }
+
+  // Buat kavling baru di klik
   const n  = tents.filter(t=>t.type==='peserta').length + 1;
   const id = `T-${pad(n)}`;
   const nt = mkTent(id, e.latlng.lat, e.latlng.lng, 4, '4×4m', 'peserta');
@@ -2613,15 +2795,10 @@ async function onMapClick(e) {
   if (checkCollision(nt.id)) {
     tents.pop(); renderAllTents(); updateStats();
     toast('⚠️ Tidak bisa tempatkan tenda di sini (overlap)!', true);
-    addMode = false;
-    document.getElementById('btn-add').classList.remove('on');
-    map.getContainer().style.cursor = '';
     return;
   }
-  addMode = false;
-  document.getElementById('btn-add').classList.remove('on');
-  map.getContainer().style.cursor = '';
   await dbUpsertTent(nt);
+  renderUnplacedQueue();
   toast(`Kavling ${id} ditambahkan`);
 }
 
@@ -3312,17 +3489,41 @@ function handleCSV(inp) {
       (headerLine.includes('nama') || headerLine.includes('family_name') || headerLine.includes('anggota'));
 
     if (isParticipantFmt) {
+      // Auto-detect delimiter: comma vs semicolon (Excel Indonesia locale uses semicolon)
+      const firstLine = lines[0];
+      const delim = (firstLine.split(';').length > firstLine.split(',').length) ? ';' : ',';
+
+      // Proper CSV row parser: handles quoted fields containing delimiter/newlines
+      function parseCSVRow(row) {
+        const result = [];
+        let cur = '', inQuote = false;
+        for (let i = 0; i < row.length; i++) {
+          const ch = row[i];
+          if (ch === '"') {
+            if (inQuote && row[i+1] === '"') { cur += '"'; i++; } // escaped ""
+            else inQuote = !inQuote;
+          } else if (ch === delim && !inQuote) {
+            result.push(cur.trim());
+            cur = '';
+          } else {
+            cur += ch;
+          }
+        }
+        result.push(cur.trim());
+        return result;
+      }
+
       // Detect column indices by header name (flexible, supports Google Sheets export)
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/^"|"$/g, ''));
-      const iNama     = headers.findIndex(h => h === 'nama' || h === 'nama_keluarga' || h === 'family_name');
+      const headers = parseCSVRow(lines[0]).map(h => h.toLowerCase().replace(/^﻿/, ''));
+      const iNama     = headers.findIndex(h => h === 'nama' || h === 'nama_keluarga' || h === 'family_name' || h.includes('nama'));
       const iJumlah   = headers.findIndex(h => h === 'jumlah' || h === 'members' || h === 'jumlah_anggota');
       const iAnggota  = headers.findIndex(h => h === 'anggota' || h === 'nama_anggota' || h === 'member_names');
       const iRole     = headers.findIndex(h => h === 'role');
-      const iVoucher  = headers.findIndex(h => h === 'kode voucher' || h === 'kode_voucher' || h === 'code' || h === 'voucher');
+      const iVoucher  = headers.findIndex(h => h.includes('voucher') || h.includes('vocher') || h === 'kode_voucher' || h === 'code');
       const iPhone    = headers.findIndex(h => h === 'phone' || h === 'no_wa' || h === 'nowa' || h === 'whatsapp' || h === 'telepon' || h === 'hp');
-      const iTenda    = headers.findIndex(h => h === 'tenda' || h === 'ownership' || h === 'status tenda');
-      const iKap      = headers.findIndex(h => h === 'kapasitas tenda' || h === 'kapasitas' || h === 'capacity');
-      const iSize     = headers.findIndex(h => h === 'size kavling' || h === 'size' || h === 'ukuran kavling' || h === 'ukuran');
+      const iTenda    = headers.findIndex(h => h === 'tenda' || h === 'ownership' || h.includes('status tenda'));
+      const iKap      = headers.findIndex(h => h.includes('kapasitas') || h === 'capacity');
+      const iSize     = headers.findIndex(h => h.includes('size') || h.includes('ukuran kavling') || h === 'ukuran');
 
       // Fallback posisi kolom jika tidak ada header yang cocok
       const iNamaFinal   = iNama   >= 0 ? iNama   : 2;
@@ -3332,7 +3533,7 @@ function handleCSV(inp) {
       const usedCodes = new Set(allParticipants.map(p => p.code));
       lines.slice(1).forEach(line => {
         if (!line.trim()) return;
-        const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+        const cols = parseCSVRow(line);
         const familyName = cols[iNamaFinal] || cols[0] || '';
         const members    = parseInt(cols[iJumlahFinal] || cols[1]) || 1;
         const memberNames = iAnggota >= 0 ? (cols[iAnggota] || '') : '';
@@ -3386,10 +3587,21 @@ function handleCSV(inp) {
       `;
     } else {
       // Tent/kavling import: kavling_id, nama_keluarga, ukuran, anggota
+      const delim2 = (lines[0].split(';').length > lines[0].split(',').length) ? ';' : ',';
+      function parseCSVRow2(row) {
+        const result = []; let cur = '', inQuote = false;
+        for (let i = 0; i < row.length; i++) {
+          const ch = row[i];
+          if (ch === '"') { if (inQuote && row[i+1] === '"') { cur += '"'; i++; } else inQuote = !inQuote; }
+          else if (ch === delim2 && !inQuote) { result.push(cur.trim()); cur = ''; }
+          else cur += ch;
+        }
+        result.push(cur.trim()); return result;
+      }
       _csvParsed = [];
       lines.slice(1).forEach(line => {
         if (!line.trim()) return;
-        const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+        const cols = parseCSVRow2(line);
         const [tentId, fam, sz, memberNames] = cols;
         _csvParsed.push({ tentId, fam, sz, memberNames });
       });
@@ -3829,7 +4041,10 @@ function renderDataList() {
                 ${availTents.map(t => `<option value="${t.id}">${t.id} (${t.size})</option>`).join('')}
                </select>`}
         </div>
-        <button onclick="event.stopPropagation();deleteParticipant('${p.id}','${p.family_name.replace(/'/g,"\\'")}','${p.claimed_tent_id||''}')" style="width:100%;padding:7px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:8px;cursor:pointer;color:var(--red,#ef4444);font-size:12px;font-weight:600">Hapus Peserta</button>
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <button onclick="event.stopPropagation();openMobileEditParticipant('${p.id}')" style="flex:1;padding:7px;border:1px solid var(--primary);background:transparent;border-radius:8px;cursor:pointer;color:var(--primary);font-size:12px;font-weight:600">✏️ Edit Data</button>
+          <button onclick="event.stopPropagation();deleteParticipant('${p.id}','${p.family_name.replace(/'/g,"\\'")}','${p.claimed_tent_id||''}')" style="flex:1;padding:7px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:8px;cursor:pointer;color:var(--red,#ef4444);font-size:12px;font-weight:600">🗑 Hapus</button>
+        </div>
       </div>` : '';
 
     return `<div onclick="toggleDpExpand('${p.id}')" style="background:var(--surface-1);border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:3px solid ${tentLabel ? 'var(--green)' : 'var(--hairline)'};cursor:pointer">
@@ -3975,10 +4190,17 @@ function renderKavlingList() {
                   </select>
                 </td>
                 <td style="padding:4px 6px;text-align:center;white-space:nowrap">
+                  ${t.lat && t.lon
+                    ? `<button onclick="zoomToTent('${t.id}')" title="Lihat di peta"
+                        style="padding:4px 7px;border:1px solid var(--primary);background:transparent;border-radius:6px;cursor:pointer;color:var(--primary);font-size:11px;margin-right:3px">🗺</button>
+                       <button onclick="resetTentPosition('${t.id}')" title="Reset posisi ke antrian"
+                        style="padding:4px 7px;border:1px solid var(--orange);background:transparent;border-radius:6px;cursor:pointer;color:var(--orange);font-size:11px;margin-right:3px">↩️ Posisi</button>`
+                    : `<button onclick="placeTentFromQueue('${t.id}');closeDataPage()" title="Tempatkan di peta"
+                        style="padding:4px 10px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;margin-right:3px">📍 Tempatkan</button>`}
                   <button onclick="resetTent('${t.id}')" title="Reset penghuni"
-                    style="padding:4px 8px;border:1px solid var(--hairline);background:transparent;border-radius:6px;cursor:pointer;color:var(--ink-muted);font-size:11px;margin-right:3px">↺ Reset</button>
+                    style="padding:4px 7px;border:1px solid var(--hairline);background:transparent;border-radius:6px;cursor:pointer;color:var(--ink-muted);font-size:11px;margin-right:3px">↺</button>
                   <button onclick="deleteTentFromList('${t.id}')" title="Hapus kavling"
-                    style="padding:4px 8px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:6px;cursor:pointer;color:var(--red,#ef4444);font-size:11px;font-weight:600">🗑</button>
+                    style="padding:4px 7px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:6px;cursor:pointer;color:var(--red,#ef4444);font-size:11px;font-weight:600">🗑</button>
                 </td>
               </tr>`;
             }).join('')}
@@ -4014,20 +4236,25 @@ function renderKavlingList() {
             <div style="font-size:13px;font-weight:600">${t.family||'—'}</div>
             <div style="font-size:11px;color:var(--ink-muted)">${t.members||0} anggota</div>
           </div>` : ''}
-        <div style="display:flex;gap:6px">
-          <button onclick="event.stopPropagation();zoomToTent('${t.id}')" style="flex:1;padding:7px;border:1px solid var(--primary);background:transparent;border-radius:8px;cursor:pointer;color:var(--primary);font-size:12px">Lihat Peta</button>
-          <button onclick="event.stopPropagation();resetTent('${t.id}')" style="flex:1;padding:7px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:8px;cursor:pointer;color:var(--red,#ef4444);font-size:12px;font-weight:600">Reset Kavling</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${t.lat && t.lon
+            ? `<button onclick="event.stopPropagation();zoomToTent('${t.id}')" style="flex:1;min-width:80px;padding:7px;border:1px solid var(--primary);background:transparent;border-radius:8px;cursor:pointer;color:var(--primary);font-size:12px">🗺 Lihat Peta</button>
+               <button onclick="event.stopPropagation();resetTentPosition('${t.id}')" style="flex:1;min-width:80px;padding:7px;border:1px solid var(--orange);background:transparent;border-radius:8px;cursor:pointer;color:var(--orange);font-size:12px">↩️ Reset Posisi</button>`
+            : `<button onclick="event.stopPropagation();placeTentFromQueue('${t.id}');closeDataPage()" style="flex:1;padding:7px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">📍 Tempatkan di Peta</button>`}
+          <button onclick="event.stopPropagation();resetTent('${t.id}')" style="flex:1;min-width:80px;padding:7px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:8px;cursor:pointer;color:var(--red,#ef4444);font-size:12px;font-weight:600">↺ Reset</button>
         </div>
       </div>` : '';
-    return `<div onclick="toggleTentExpand('${t.id}')" style="background:var(--surface-1);border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:3px solid ${statusColor};cursor:pointer">
+    const unplaced = !t.lat && !t.lon;
+    return `<div onclick="toggleTentExpand('${t.id}')" style="background:var(--surface-1);border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:3px solid ${unplaced?'var(--orange)':statusColor};cursor:pointer">
       <div style="display:flex;align-items:center;gap:10px">
         <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap">
             <span style="font-size:13px;font-weight:700;font-family:monospace">${t.id}</span>
-            <span style="font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;background:${statusColor};color:#fff">${statusLabel}</span>
+            <span style="font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;background:${unplaced?'var(--orange)':statusColor};color:#fff">${unplaced?'Antrian':statusLabel}</span>
             <span style="font-size:10px;color:var(--ink-muted)">${t.size||'4×4m'}</span>
           </div>
-          ${t.family ? `<div style="font-size:13px;font-weight:500">${t.family}</div>` : `<div style="font-size:12px;color:var(--ink-muted)">Belum ada penghuni</div>`}
+          ${unplaced ? `<div style="font-size:12px;color:var(--orange)">⏳ Belum ditempatkan di peta</div>`
+            : t.family ? `<div style="font-size:13px;font-weight:500">${t.family}</div>` : `<div style="font-size:12px;color:var(--ink-muted)">Belum ada penghuni</div>`}
         </div>
         <span style="color:var(--ink-muted);font-size:16px;transition:transform .2s;transform:rotate(${isExp?'90':'0'}deg)">›</span>
       </div>
@@ -4189,6 +4416,84 @@ async function saveParticipantEdit(id) {
   if (error) { toast('Gagal simpan: ' + error.message, true); return; }
   Object.assign(p, updates);
   _editingPId = null;
+  toast(`✅ Data "${name}" disimpan`);
+  renderDataStats(); renderDataList();
+}
+
+function openMobileEditParticipant(id) {
+  const p = allParticipants.find(x => String(x.id) === String(id)); if (!p) return;
+  const mnRaw = typeof p.member_names === 'string' ? p.member_names : (Array.isArray(p.member_names) ? p.member_names.join('|') : '');
+  document.getElementById('m-edit-participant-body').innerHTML = `
+    <input type="hidden" id="medit-id" value="${p.id}">
+    <div>
+      <label style="font-size:11px;font-weight:600;color:var(--ink-muted);display:block;margin-bottom:4px">VOUCHER</label>
+      <input id="medit-code" value="${(p.code||'').replace(/"/g,'&quot;')}" style="width:100%;padding:9px 12px;border:1px solid var(--hairline);border-radius:8px;font-size:14px;font-family:monospace;background:var(--canvas);color:var(--ink);box-sizing:border-box">
+    </div>
+    <div>
+      <label style="font-size:11px;font-weight:600;color:var(--ink-muted);display:block;margin-bottom:4px">NAMA KELUARGA</label>
+      <input id="medit-name" value="${(p.family_name||'').replace(/"/g,'&quot;')}" style="width:100%;padding:9px 12px;border:1px solid var(--hairline);border-radius:8px;font-size:14px;background:var(--canvas);color:var(--ink);box-sizing:border-box">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--ink-muted);display:block;margin-bottom:4px">JUMLAH ANGGOTA</label>
+        <input id="medit-members" type="number" min="1" value="${p.members||''}" style="width:100%;padding:9px 12px;border:1px solid var(--hairline);border-radius:8px;font-size:14px;background:var(--canvas);color:var(--ink);box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--ink-muted);display:block;margin-bottom:4px">ROLE</label>
+        <select id="medit-role" style="width:100%;padding:9px 12px;border:1px solid var(--hairline);border-radius:8px;font-size:14px;background:var(--canvas);color:var(--ink);box-sizing:border-box">
+          <option value="peserta" ${p.role!=='panitia'?'selected':''}>Peserta</option>
+          <option value="panitia" ${p.role==='panitia'?'selected':''}>Panitia</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--ink-muted);display:block;margin-bottom:4px">TENDA</label>
+        <select id="medit-town" style="width:100%;padding:9px 12px;border:1px solid var(--hairline);border-radius:8px;font-size:14px;background:var(--canvas);color:var(--ink);box-sizing:border-box">
+          <option value="sewa" ${(p.tent_ownership||'sewa')==='sewa'?'selected':''}>🔑 Sewa</option>
+          <option value="sendiri" ${p.tent_ownership==='sendiri'?'selected':''}>🏕️ Sendiri</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--ink-muted);display:block;margin-bottom:4px">SIZE KAVLING</label>
+        <select id="medit-tsize" style="width:100%;padding:9px 12px;border:1px solid var(--hairline);border-radius:8px;font-size:14px;background:var(--canvas);color:var(--ink);box-sizing:border-box">
+          <option value="3×3m" ${(p.tent_size||'3×3m')==='3×3m'?'selected':''}>3×3m / 4P</option>
+          <option value="4×4m" ${p.tent_size==='4×4m'?'selected':''}>4×4m / 6P</option>
+          <option value="4×6m" ${p.tent_size==='4×6m'?'selected':''}>4×6m / 10P</option>
+          <option value="6×6m" ${p.tent_size==='6×6m'?'selected':''}>6×6m / 14P</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <label style="font-size:11px;font-weight:600;color:var(--ink-muted);display:block;margin-bottom:4px">NO. WHATSAPP</label>
+      <input id="medit-phone" value="${(p.phone||'').replace(/"/g,'&quot;')}" placeholder="628xxx" style="width:100%;padding:9px 12px;border:1px solid var(--hairline);border-radius:8px;font-size:14px;background:var(--canvas);color:var(--ink);box-sizing:border-box">
+    </div>
+    <div>
+      <label style="font-size:11px;font-weight:600;color:var(--ink-muted);display:block;margin-bottom:4px">NAMA ANGGOTA (pisah |)</label>
+      <textarea id="medit-mnames" rows="3" style="width:100%;padding:9px 12px;border:1px solid var(--hairline);border-radius:8px;font-size:13px;background:var(--canvas);color:var(--ink);box-sizing:border-box;resize:vertical">${mnRaw}</textarea>
+    </div>
+  `;
+  openOv('m-edit-participant');
+}
+
+async function saveMobileEditParticipant() {
+  const id = document.getElementById('medit-id')?.value; if (!id) return;
+  const p = allParticipants.find(x => String(x.id) === String(id)); if (!p) return;
+  const name    = document.getElementById('medit-name')?.value.trim();
+  if (!name) { toast('Nama tidak boleh kosong', true); return; }
+  const code    = document.getElementById('medit-code')?.value.trim() || p.code;
+  const members = parseInt(document.getElementById('medit-members')?.value) || 0;
+  const role    = document.getElementById('medit-role')?.value || 'peserta';
+  const phone   = document.getElementById('medit-phone')?.value.trim() || '';
+  const mnames  = document.getElementById('medit-mnames')?.value.trim() || '';
+  const tent_ownership = document.getElementById('medit-town')?.value || 'sewa';
+  const rawTSize       = document.getElementById('medit-tsize')?.value || '3×3m';
+  const tent_capacity  = rawTSize === '3×3m' ? 4 : rawTSize === '4×4m' ? 6 : rawTSize === '4×6m' ? 10 : 14;
+  const updates = { family_name: name, members, role, member_names: mnames, code, phone, tent_ownership, tent_size: rawTSize, tent_capacity };
+  const { error } = await sb.from('participants').update(updates).eq('id', id);
+  if (error) { toast('Gagal simpan: ' + error.message, true); return; }
+  Object.assign(p, updates);
+  closeOv('m-edit-participant');
   toast(`✅ Data "${name}" disimpan`);
   renderDataStats(); renderDataList();
 }
