@@ -2469,6 +2469,7 @@ function renderLayerList() {
         <span onclick="toggleGroupCollapse('${key}')" style="font-size:9px;transition:transform .2s;display:inline-block;transform:rotate(${isCollapsed?'-90':'0'}deg);cursor:pointer;padding:2px">▼</span>
         <span onclick="toggleGroupCollapse('${key}')" style="font-size:11px;font-weight:600;color:var(--ink-muted);flex:1;cursor:pointer">${grp === '—' ? 'Tanpa Grup' : grp}</span>
         <span style="font-size:10px;color:var(--ink-muted)">${layers.length}</span>
+        ${grp !== '—' ? `<button class="lbtn" onclick="event.stopPropagation();renameLayerGroup('${grp.replace(/'/g,"\\'")}','${cat}')" title="Ganti nama grup" style="width:auto;padding:2px 5px"><i data-lucide="pencil" class="lucide" style="width:11px;height:11px"></i></button>` : ''}
         <button class="lbtn ${anyVisible?'active':''}" onclick="toggleGroupVis('${key}',${allVisible},'${cat}','${grp}')"><i data-lucide="eye${allVisible?'':'-off'}" class="lucide" style="width:13px;height:13px"></i></button>
       </div>
       ${isCollapsed ? '' : layers.map(renderItem).join('')}
@@ -2609,11 +2610,53 @@ function pickLayerColor(id) {
 
 function setLayerGroup(id) {
   const l = mapLayers.find(x => x.id === id); if (!l) return;
-  const g = prompt('Nama grup (kosongkan untuk hapus dari grup):', l.group_name || '');
-  if (g === null) return;
-  l.group_name = g.trim() || null;
-  dbUpsertMapLayer(l);
+  // Kumpulkan grup yang sudah ada (semua kategori)
+  const existingGroups = [...new Set(mapLayers.map(x => x.group_name).filter(Boolean))].sort();
+
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center';
+  const groupBtns = existingGroups.map(g =>
+    `<button onclick="window._pickGroup('${g.replace(/'/g,"\\'")}')" style="padding:8px 12px;border:1px solid var(--hairline);border-radius:8px;background:${l.group_name===g?'var(--primary)':'var(--surface-1)'};color:${l.group_name===g?'#fff':'var(--ink)'};cursor:pointer;font-size:12px;font-weight:600;text-align:left;display:flex;align-items:center;gap:6px">
+      <span style="font-size:11px">📁</span>${g}
+    </button>`
+  ).join('');
+
+  ov.innerHTML = `
+    <div style="background:var(--canvas);border-radius:16px;padding:20px;width:290px;max-height:80vh;overflow-y:auto">
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px">Pilih Grup</div>
+      <div style="font-size:12px;color:var(--ink-muted);margin-bottom:14px">Layer: <b>${l.name}</b></div>
+      ${existingGroups.length ? `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">${groupBtns}</div>` : ''}
+      <div style="border-top:1px solid var(--hairline);padding-top:12px;display:flex;flex-direction:column;gap:6px">
+        <input id="_grp-inp" placeholder="Nama grup baru..." value="" style="padding:8px 10px;border:1px solid var(--hairline);border-radius:8px;font-size:13px;background:var(--surface-1);color:var(--ink);width:100%;box-sizing:border-box">
+        <button onclick="window._pickGroup(document.getElementById('_grp-inp').value.trim())" style="padding:8px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">Buat / Pindah ke Grup Ini</button>
+        ${l.group_name ? `<button onclick="window._pickGroup('')" style="padding:7px;background:transparent;border:1px solid var(--hairline);border-radius:8px;cursor:pointer;font-size:12px;color:var(--ink-muted)">Lepas dari Grup</button>` : ''}
+        <button onclick="window._pickGroup(null)" style="padding:7px;background:transparent;border:none;cursor:pointer;font-size:12px;color:var(--ink-muted)">Batal</button>
+      </div>
+    </div>`;
+
+  window._pickGroup = async (val) => {
+    document.body.removeChild(ov);
+    delete window._pickGroup;
+    if (val === null) return;
+    l.group_name = val || null;
+    await dbUpsertMapLayer(l);
+    renderLayerList();
+    if (val) toast(`Layer dipindah ke grup "${val}"`);
+    else toast('Layer dilepas dari grup');
+  };
+  document.body.appendChild(ov);
+}
+
+async function renameLayerGroup(oldName, cat) {
+  const newName = prompt(`Ganti nama grup "${oldName}":`, oldName);
+  if (!newName || newName.trim() === oldName) return;
+  const affected = mapLayers.filter(l =>
+    l.group_name === oldName && (l.category || (l.type==='path'?'jalur':'area')) === cat
+  );
+  affected.forEach(l => { l.group_name = newName.trim() || null; });
+  await Promise.all(affected.map(l => dbUpsertMapLayer(l)));
   renderLayerList();
+  toast(`Grup "${oldName}" → "${newName.trim()}"`);
 }
 
 function toggleLayerVis(id) {
