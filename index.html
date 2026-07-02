@@ -1705,14 +1705,19 @@ function showBSheet(t) {
   document.getElementById('bs-own').textContent = t.ownership === 'sendiri' ? 'Bawa Sendiri' : 'Sewa';
   document.getElementById('bs-fac').textContent = t.facilities;
   const alreadyClaimed = participantData && participantData.claimed_tent_id && participantData.claimed_tent_id !== t.id;
-  const avail = t.status === 'available' && t.type !== 'panitia' && !alreadyClaimed;
+  const userRole = participantData?.role || 'peserta';
+  const expectedType = userRole === 'panitia' ? 'panitia' : 'peserta';
+  const typeMismatch = t.status === 'available' && t.type !== expectedType;
+  const avail = t.status === 'available' && !alreadyClaimed && !typeMismatch;
   document.getElementById('bs-avail').style.display  = avail ? 'block' : 'none';
   document.getElementById('bs-taken').style.display  = avail ? 'none' : 'block';
-  if (alreadyClaimed && t.status === 'available') {
+  if (typeMismatch) {
+    document.getElementById('bs-occ-name').textContent = t.type === 'panitia' ? '🔒 Kavling Panitia' : '🔒 Kavling Peserta';
+    document.getElementById('bs-occ-mem').textContent = `Hanya ${t.type} yang bisa memilih kavling ini`;
+  } else if (alreadyClaimed && t.status === 'available') {
     document.getElementById('bs-occ-name').textContent = `Kamu sudah punya kavling ${participantData.claimed_tent_id}`;
     document.getElementById('bs-occ-mem').textContent = '';
-  } else
-  if (!avail) {
+  } else if (!avail) {
     document.getElementById('bs-occ-name').textContent = (mode === 'public') ? 'Terisi' : (t.family || 'Panitia SFC3');
     document.getElementById('bs-occ-mem').textContent  = (mode === 'public') ? '' : (t.members ? t.members + ' anggota' : '');
   } else {
@@ -1743,6 +1748,15 @@ async function claimTent() {
 
   const t = tents.find(x => x.id === selTentId);
   if (!t) return;
+
+  // Cek kecocokan tipe kavling dengan role peserta
+  const expectedType = (participantData?.role === 'panitia') ? 'panitia' : 'peserta';
+  if (t.type !== expectedType) {
+    const label = t.type === 'panitia' ? 'kavling panitia' : 'kavling peserta';
+    toast(`❌ ${expectedType === 'peserta' ? 'Peserta' : 'Panitia'} hanya bisa memilih ${expectedType === 'peserta' ? 'kavling peserta' : 'kavling panitia'}`, true);
+    closeBSheet();
+    return;
+  }
 
   // Race condition: re-cek status dari DB sebelum claim
   const { data: fresh } = await sb.from('tents').select('status,family').eq('id', t.id).maybeSingle();
@@ -3848,7 +3862,9 @@ function renderDataList() {
   const appUrl = window.location.origin + window.location.pathname;
 
   const isMobile = window.innerWidth < 768;
-  const availTents = tents.filter(t => t.status === 'available' && t.type === 'peserta').sort((a,b) => a.id.localeCompare(b.id));
+  // availTents per role — dipakai di dropdown assign per baris
+  const availTentsPeserta = tents.filter(t => t.status === 'available' && t.type === 'peserta' && t.lat && t.lon).sort((a,b) => a.id.localeCompare(b.id));
+  const availTentsPanitia = tents.filter(t => t.status === 'available' && t.type === 'panitia' && t.lat && t.lon).sort((a,b) => a.id.localeCompare(b.id));
 
   // ── Helper per baris ──────────────────────────────────────────────
   const buildRow = p => {
@@ -3975,7 +3991,7 @@ function renderDataList() {
                      <select onchange="adminAssignTent('${p.id}',this.value);this.value=''"
                        style="font-size:12px;padding:3px 6px;border:1px solid var(--hairline);border-radius:6px;background:var(--surface-1);color:var(--ink);cursor:pointer;max-width:120px">
                        <option value="">Assign kavling…</option>
-                       ${availTents.map(t => `<option value="${t.id}">${t.id} (${t.size})</option>`).join('')}
+                       ${(p.role === 'panitia' ? availTentsPanitia : availTentsPeserta).map(t => `<option value="${t.id}">${t.id} (${t.size})</option>`).join('')}
                      </select>
                    </div>`;
 
@@ -4071,6 +4087,11 @@ async function adminAssignTent(participantId, tentId) {
   const p = allParticipants.find(x => x.id === participantId);
   if (!t || !p) return;
   if (t.status !== 'available') { toast('Kavling sudah terisi!', true); renderDataList(); return; }
+  const expectedType = (p.role === 'panitia') ? 'panitia' : 'peserta';
+  if (t.type !== expectedType) {
+    toast(`❌ ${p.role === 'panitia' ? 'Panitia' : 'Peserta'} hanya bisa diisi ke kavling ${expectedType}`, true);
+    renderDataList(); return;
+  }
   const memberCount = p.members || (Array.isArray(p.member_names) ? p.member_names.length : 0);
   // Pakai preferensi dari data peserta jika ada, fallback ke auto-derive
   const derived = tentSizeFromMembers(memberCount);
