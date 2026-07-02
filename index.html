@@ -596,7 +596,7 @@
       <div class="muted" id="dp-mem">—</div>
     </div>
 
-    <div class="dp-sec">
+    <div class="dp-sec" id="dp-qr-sec">
       <div class="dp-lbl">QR Code Kavling</div>
       <div id="qr-box"></div>
       <button class="btn btn-gh btn-w mt8" onclick="printQRPanel()"><i data-lucide="printer" class="lucide"></i> Cetak QR</button>
@@ -835,6 +835,7 @@
   <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--hairline);flex-shrink:0;background:var(--canvas)">
     <button onclick="closeDataPage()" style="border:none;background:transparent;cursor:pointer;color:var(--ink-muted);padding:4px;border-radius:8px;display:flex"><i data-lucide="arrow-left" class="lucide" style="width:22px;height:22px"></i></button>
     <span style="font-size:16px;font-weight:700;flex:1">Data Peserta & Panitia</span>
+    <button onclick="syncTentsToDB()" title="Sinkronkan data tenda dari peta ke database" style="border:none;background:transparent;cursor:pointer;color:var(--primary,#6d28d9);padding:6px 8px;border-radius:8px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px"><i data-lucide="refresh-cw" class="lucide" style="width:15px;height:15px"></i></button>
     <button onclick="resetAllParticipants()" title="Kosongkan semua data peserta" style="border:none;background:transparent;cursor:pointer;color:var(--red,#ef4444);padding:6px 8px;border-radius:8px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px"><i data-lucide="trash-2" class="lucide" style="width:15px;height:15px"></i></button>
     <button onclick="openOv('m-csv')" style="border:none;background:var(--primary);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px"><i data-lucide="upload" class="lucide" style="width:14px;height:14px"></i> Import</button>
   </div>
@@ -941,8 +942,8 @@
 
     <div style="font-size:11px;font-weight:700;color:var(--ink-muted);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.5px">Keamanan</div>
     <div class="fi-row">
-      <div class="fg"><label>PIN Admin (saat ini)</label><input class="fi" id="ev-pin-old" type="password" placeholder="PIN lama"></div>
-      <div class="fg"><label>PIN Baru</label><input class="fi" id="ev-pin-new" type="password" placeholder="PIN baru (kosong = tidak ubah)"></div>
+      <div class="fg"><label>PIN Baru</label><input class="fi" id="ev-pin-new" type="password" placeholder="Kosong = tidak ubah (min. 4 karakter)"></div>
+      <div class="fg"><label>Konfirmasi PIN Baru</label><input class="fi" id="ev-pin-confirm" type="password" placeholder="Ulangi PIN baru"></div>
     </div>
 
     <div class="btn-row mt8">
@@ -1714,10 +1715,12 @@ function showDetailPanel(t) {
   const rotEl = document.getElementById('dp-rot-val');
   if (rotEl) rotEl.textContent = (t.rotation || 0) + '°';
 
-  // QR
+  // QR — only in admin/peserta mode, not public
+  const qrSec = document.getElementById('dp-qr-sec');
+  if (qrSec) qrSec.style.display = (mode === 'public') ? 'none' : '';
   const qb = document.getElementById('qr-box');
   qb.innerHTML = '';
-  genQR(qb, t.id, 120);
+  if (mode !== 'public') genQR(qb, t.id, 120);
 }
 
 // ══════════════════════════════════════════════
@@ -3953,9 +3956,18 @@ async function openDataPage() {
   const el = document.getElementById('m-data');
   el.classList.add('show');
   document.getElementById('dp-search').value = '';
+  // Reload both tents and participants from DB so table matches map
+  const freshTents = await dbLoadTents();
+  if (freshTents) {
+    freshTents.forEach(ft => {
+      const t = tents.find(x => x.id === ft.id);
+      if (t) Object.assign(t, ft);
+    });
+  }
   allParticipants = await dbLoadAllParticipants();
   renderDataStats();
   renderDataList();
+  renderAllTents();
   lucide.createIcons();
 }
 
@@ -3969,6 +3981,15 @@ async function refreshDataPage() {
   renderDataStats();
   dataTab === 'kavling' ? renderKavlingList() : renderDataList();
   toast('✅ Data diperbarui');
+}
+
+async function syncTentsToDB() {
+  toast('🔄 Menyinkronkan data tenda ke database...');
+  await dbUpsertTents(tents);
+  allParticipants = await dbLoadAllParticipants();
+  renderDataStats();
+  dataTab === 'kavling' ? renderKavlingList() : renderDataList();
+  toast('✅ Sinkronisasi selesai — data tenda diperbarui ke database');
 }
 
 function setDataTab(tab) {
@@ -4793,20 +4814,20 @@ function openEventModal() {
     if (sizeEl) sizeEl.value = currentEvent.default_tent_size || '3×3m';
     const waEl = document.getElementById('ev-wa-template');
     if (waEl) waEl.value = currentEvent.wa_template || '';
-    const pinOldEl = document.getElementById('ev-pin-old');
-    if (pinOldEl) pinOldEl.value = '';
     const pinNewEl = document.getElementById('ev-pin-new');
     if (pinNewEl) pinNewEl.value = '';
+    const pinConfirmEl = document.getElementById('ev-pin-confirm');
+    if (pinConfirmEl) pinConfirmEl.value = '';
   }
   openOv('m-event');
 }
 
 async function saveEvent() {
-  const pinOld = document.getElementById('ev-pin-old').value;
-  const pinNew = document.getElementById('ev-pin-new').value;
+  const pinNew     = document.getElementById('ev-pin-new').value.trim();
+  const pinConfirm = document.getElementById('ev-pin-confirm').value.trim();
   if (pinNew) {
-    if (pinOld !== ADMIN_PIN) { toast('PIN lama salah, PIN tidak diubah', true); return; }
-    if (pinNew.length < 4) { toast('PIN baru minimal 4 karakter', true); return; }
+    if (pinNew.length < 4)       { toast('PIN baru minimal 4 karakter', true); return; }
+    if (pinNew !== pinConfirm)   { toast('Konfirmasi PIN tidak cocok', true); return; }
   }
   const ev = {
     id: currentEvent?.id || undefined,
@@ -4820,9 +4841,10 @@ async function saveEvent() {
     admin_pin: pinNew || currentEvent?.admin_pin || ADMIN_PIN
   };
   await dbUpsertEvent(ev);
+  if (pinNew) ADMIN_PIN = pinNew;
   await loadCurrentEvent();
   closeOv('m-event');
-  toast('Pengaturan event disimpan');
+  toast(pinNew ? `✅ PIN berhasil diubah menjadi: ${pinNew}` : '✅ Pengaturan event disimpan');
 }
 
 // ══════════════════════════════════════════════
