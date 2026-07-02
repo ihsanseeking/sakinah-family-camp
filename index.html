@@ -2742,23 +2742,39 @@ function handleCSV(inp) {
     if (lines.length < 2) { toast('File kosong atau format salah', true); return; }
 
     const headerLine = lines[0].toLowerCase();
-    // Participant format: has nama_keluarga/family_name/anggota but NOT kavling_id
+    // Participant format: has nama/nama_keluarga/family_name but NOT kavling_id
     const isParticipantFmt = !headerLine.includes('kavling_id') &&
-      (headerLine.includes('nama_keluarga') || headerLine.includes('family_name') || headerLine.includes('anggota'));
+      (headerLine.includes('nama') || headerLine.includes('family_name') || headerLine.includes('anggota'));
 
     if (isParticipantFmt) {
-      // Format: nama_keluarga, anggota, role(opsional) — voucher dibuat otomatis
+      // Detect column indices by header name (flexible, supports Google Sheets export)
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/^"|"$/g, ''));
+      const iNama    = headers.findIndex(h => h === 'nama' || h === 'nama_keluarga' || h === 'family_name');
+      const iJumlah  = headers.findIndex(h => h === 'jumlah' || h === 'anggota' || h === 'members' || h === 'jumlah_anggota');
+      const iAnggota = headers.findIndex(h => h === 'anggota' || h === 'nama_anggota' || h === 'member_names');
+      const iRole    = headers.findIndex(h => h === 'role');
+      const iVoucher = headers.findIndex(h => h === 'kode voucher' || h === 'kode_voucher' || h === 'code' || h === 'voucher');
+
+      // Fallback: if 'anggota' found once, it could be jumlah or names — disambiguate by content
+      const iNamaFinal    = iNama    >= 0 ? iNama    : 2;
+      const iJumlahFinal  = headers.findIndex(h => h === 'jumlah') >= 0 ? headers.findIndex(h => h === 'jumlah') : (iJumlah >= 0 ? iJumlah : 1);
+      const iAnggotaFinal = headers.findIndex(h => h === 'anggota') >= 0 ? headers.findIndex(h => h === 'anggota') : -1;
+
       _csvParsed = [];
       const usedCodes = new Set(allParticipants.map(p => p.code));
       lines.slice(1).forEach(line => {
         if (!line.trim()) return;
         const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-        const familyName = cols[0] || '';
-        const members = parseInt(cols[1]) || 1;
-        const role = (cols[2] || '').toLowerCase() === 'panitia' ? 'panitia' : 'peserta';
+        const familyName = iNamaFinal >= 0 ? (cols[iNamaFinal] || '') : (cols[0] || '');
+        const members = parseInt(iJumlahFinal >= 0 ? cols[iJumlahFinal] : cols[1]) || 1;
+        const memberNames = iAnggotaFinal >= 0 ? (cols[iAnggotaFinal] || '') : '';
+        const role = iRole >= 0 ? ((cols[iRole] || '').toLowerCase() === 'panitia' ? 'panitia' : 'peserta') : 'peserta';
+        // Pakai voucher dari file jika ada, generate baru jika kosong
+        const existingCode = iVoucher >= 0 ? (cols[iVoucher] || '').trim().toUpperCase() : '';
+        const code = (existingCode && existingCode.length >= 4) ? existingCode : generateVoucherCode(usedCodes);
+        if (existingCode) usedCodes.add(code);
         if (!familyName) return;
-        const code = generateVoucherCode(usedCodes);
-        _csvParsed.push({ code, family_name: familyName, members, role });
+        _csvParsed.push({ code, family_name: familyName, members, member_names: memberNames, role });
       });
 
       const prev = document.getElementById('csv-preview');
@@ -2817,7 +2833,7 @@ async function confirmCSVImport() {
   const btn = document.querySelector('#csv-preview button');
   if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan...'; }
 
-  const rows = _csvParsed.map(p => ({ code: p.code, family_name: p.family_name, members: p.members, role: p.role || 'peserta' }));
+  const rows = _csvParsed.map(p => ({ code: p.code, family_name: p.family_name, members: p.members, member_names: p.member_names || null, role: p.role || 'peserta' }));
   const { error } = await sb.from('participants').upsert(rows, { onConflict: 'code' });
 
   if (error) {
