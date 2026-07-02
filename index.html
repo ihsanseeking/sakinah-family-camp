@@ -2408,14 +2408,21 @@ function toggleLayerExpand(id) {
   renderLayerList();
 }
 
+let _layerFilter = '';
+let _dragLayerId = null;
+
 function renderLayerList() {
   const el = document.getElementById('layer-list'); if (!el) return;
   if (!mapLayers.length) { el.innerHTML = ''; return; }
 
-  // Group by category → group_name
+  const q = _layerFilter.toLowerCase();
   const CAT_ORDER = ['bangunan','area','jalur'];
+  const catColors = { area:'#22c55e', bangunan:'#3b82f6', jalur:'#f59e0b' };
+
+  // Build grouped structure (preserve insertion order, no sort by visibility)
   const byCategory = {};
-  [...mapLayers].forEach(l => {
+  mapLayers.forEach(l => {
+    if (q && !l.name.toLowerCase().includes(q)) return;
     const cat = l.category || (l.type === 'path' ? 'jalur' : 'area');
     if (!byCategory[cat]) byCategory[cat] = {};
     const grp = l.group_name || '—';
@@ -2423,22 +2430,24 @@ function renderLayerList() {
     byCategory[cat][grp].push(l);
   });
 
-  const catColors = { area:'#22c55e', bangunan:'#3b82f6', jalur:'#f59e0b' };
-
   const renderItem = l => {
     const cat = l.category || (l.type === 'path' ? 'jalur' : 'area');
     return `
-    <div>
+    <div draggable="true"
+         ondragstart="event.stopPropagation();_dragLayerId='${l.id}';event.dataTransfer.effectAllowed='move'"
+         ondragend="document.querySelectorAll('.layer-drop-target').forEach(x=>x.classList.remove('layer-drop-target'))"
+         style="cursor:grab">
       <div class="layer-item" onclick="toggleLayerExpand('${l.id}')">
+        <span style="color:var(--ink-muted);font-size:12px;cursor:grab;margin-right:2px">⠿</span>
         <div class="layer-dot" style="background:${l.color};cursor:pointer" onclick="event.stopPropagation();pickLayerColor('${l.id}')" title="Ganti warna"></div>
-        <span class="layer-lbl" style="color:${l.visible?'var(--ink)':'var(--ink-muted)'}">${l.name}</span>
-        <button class="lbtn ${l.visible?'active':''}" onclick="event.stopPropagation();toggleLayerVis('${l.id}')" title="${l.visible?'Sembunyikan':'Tampilkan'}"><i data-lucide="eye${l.visible?'':'-off'}" class="lucide" style="width:13px;height:13px"></i></button>
+        <span class="layer-lbl" style="color:${l.visible?'var(--ink)':'var(--ink-muted);text-decoration:line-through'};opacity:${l.visible?1:0.5}">${l.name}</span>
+        <button class="lbtn ${l.visible?'active':''}" onclick="event.stopPropagation();toggleLayerVisOnly('${l.id}')" title="${l.visible?'Sembunyikan':'Tampilkan'}"><i data-lucide="eye${l.visible?'':'-off'}" class="lucide" style="width:13px;height:13px"></i></button>
       </div>
       ${expandedLayerIds.has(l.id) ? `
       <div style="display:flex;gap:4px;padding:2px 8px 6px 22px;flex-wrap:wrap">
         <button class="lbtn" style="width:auto;padding:3px 8px;font-size:11px;gap:4px" onclick="renameMapLayer('${l.id}')"><i data-lucide="pencil" class="lucide" style="width:12px;height:12px"></i> Nama</button>
         <button class="lbtn" style="width:auto;padding:3px 8px;font-size:11px;gap:4px" onclick="setLayerGroup('${l.id}')"><i data-lucide="folder" class="lucide" style="width:12px;height:12px"></i> Grup</button>
-        <button class="lbtn" style="width:auto;padding:3px 8px;font-size:11px;gap:4px" onclick="cycleLayerCategory('${l.id}')" title="Ganti kategori: ${cat}"><i data-lucide="tag" class="lucide" style="width:12px;height:12px"></i> ${CATEGORY_ICONS[cat]} ${CATEGORY_LABELS[cat]}</button>
+        <button class="lbtn" style="width:auto;padding:3px 8px;font-size:11px;gap:4px" onclick="cycleLayerCategory('${l.id}')"><i data-lucide="tag" class="lucide" style="width:12px;height:12px"></i> ${CATEGORY_ICONS[cat]} ${CATEGORY_LABELS[cat]}</button>
         <button class="lbtn" style="width:auto;padding:3px 8px;font-size:11px;gap:4px;color:var(--red)" onclick="deleteMapLayer('${l.id}')"><i data-lucide="trash-2" class="lucide" style="width:12px;height:12px"></i> Hapus</button>
       </div>` : ''}
     </div>`;
@@ -2451,17 +2460,26 @@ function renderLayerList() {
     const anyVisible = layers.some(l => l.visible);
     return `
     <div style="margin-bottom:2px">
-      <div style="display:flex;align-items:center;gap:5px;padding:3px 6px;border-radius:6px;background:var(--surface-1);margin-bottom:1px">
+      <div class="layer-drop-zone" data-cat="${cat}" data-grp="${grp}"
+           ondragover="event.preventDefault();event.currentTarget.classList.add('layer-drop-target')"
+           ondragleave="event.currentTarget.classList.remove('layer-drop-target')"
+           ondrop="event.preventDefault();event.currentTarget.classList.remove('layer-drop-target');dropLayerToGroup('${cat}','${grp}')"
+           style="display:flex;align-items:center;gap:5px;padding:3px 6px;border-radius:6px;background:var(--surface-1);margin-bottom:1px;transition:background .15s">
         <span onclick="toggleGroupCollapse('${key}')" style="font-size:9px;transition:transform .2s;display:inline-block;transform:rotate(${isCollapsed?'-90':'0'}deg);cursor:pointer;padding:2px">▼</span>
-        <span onclick="toggleGroupCollapse('${key}')" style="font-size:11px;font-weight:600;color:var(--ink-muted);flex:1;cursor:pointer">${grp}</span>
+        <span onclick="toggleGroupCollapse('${key}')" style="font-size:11px;font-weight:600;color:var(--ink-muted);flex:1;cursor:pointer">${grp === '—' ? 'Tanpa Grup' : grp}</span>
         <span style="font-size:10px;color:var(--ink-muted)">${layers.length}</span>
-        <button class="lbtn ${anyVisible?'active':''}" onclick="toggleGroupVis('${key}',${allVisible},'${cat}','${grp}')" title="${allVisible?'Sembunyikan':'Tampilkan'}"><i data-lucide="eye${allVisible?'':'-off'}" class="lucide" style="width:13px;height:13px"></i></button>
+        <button class="lbtn ${anyVisible?'active':''}" onclick="toggleGroupVis('${key}',${allVisible},'${cat}','${grp}')"><i data-lucide="eye${allVisible?'':'-off'}" class="lucide" style="width:13px;height:13px"></i></button>
       </div>
       ${isCollapsed ? '' : layers.map(renderItem).join('')}
     </div>`;
   };
 
-  el.innerHTML = CAT_ORDER.filter(cat => byCategory[cat]).map(cat => {
+  // Filter input
+  const filterHtml = `<div style="padding:4px 0 6px">
+    <input value="${_layerFilter}" oninput="_layerFilter=this.value;renderLayerList()" placeholder="Cari layer..." style="width:100%;padding:5px 8px;border:1px solid var(--hairline);border-radius:6px;font-size:12px;background:var(--surface-1);color:var(--ink);box-sizing:border-box">
+  </div>`;
+
+  el.innerHTML = filterHtml + (CAT_ORDER.filter(cat => byCategory[cat]).map(cat => {
     const groups = byCategory[cat];
     const catKey = 'cat::' + cat;
     const isCatCollapsed = collapsedGroups.has(catKey);
@@ -2470,17 +2488,66 @@ function renderLayerList() {
     const anyVisible = allLayers.some(l => l.visible);
     return `
     <div style="margin-bottom:6px">
-      <div style="display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:8px;background:${catColors[cat]}18;border-left:3px solid ${catColors[cat]};margin-bottom:3px;cursor:pointer" onclick="toggleGroupCollapse('${catKey}')">
+      <div class="layer-drop-zone" data-cat="${cat}" data-grp="—"
+           ondragover="event.preventDefault();event.currentTarget.classList.add('layer-drop-target')"
+           ondragleave="event.currentTarget.classList.remove('layer-drop-target')"
+           ondrop="event.preventDefault();event.currentTarget.classList.remove('layer-drop-target');dropLayerToGroup('${cat}','—')"
+           style="display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:8px;background:${catColors[cat]}18;border-left:3px solid ${catColors[cat]};margin-bottom:3px;cursor:pointer;transition:background .15s" onclick="toggleGroupCollapse('${catKey}')">
         <span style="font-size:13px">${CATEGORY_ICONS[cat]}</span>
         <span style="font-size:12px;font-weight:700;color:var(--ink);flex:1">${CATEGORY_LABELS[cat]}</span>
         <span style="font-size:10px;color:var(--ink-muted)">${allLayers.length}</span>
-        <button class="lbtn ${anyVisible?'active':''}" onclick="event.stopPropagation();toggleCategoryVis('${cat}',${allVisible})" title="${allVisible?'Sembunyikan':'Tampilkan'} semua"><i data-lucide="eye${allVisible?'':'-off'}" class="lucide" style="width:13px;height:13px"></i></button>
+        <button class="lbtn ${anyVisible?'active':''}" onclick="event.stopPropagation();toggleCategoryVis('${cat}',${allVisible})"><i data-lucide="eye${allVisible?'':'-off'}" class="lucide" style="width:13px;height:13px"></i></button>
         <span style="font-size:9px;color:var(--ink-muted);transform:rotate(${isCatCollapsed?'-90':'0'}deg);transition:transform .2s">▼</span>
       </div>
       ${isCatCollapsed ? '' : Object.entries(groups).map(([grp, layers]) => renderGroup(grp, layers, cat)).join('')}
     </div>`;
-  }).join('');
+  }).join('') || '<div style="padding:8px;font-size:12px;color:var(--ink-muted);text-align:center">Tidak ada layer</div>');
+
+  // CSS for drop highlight
+  if (!document.getElementById('layer-dnd-style')) {
+    const s = document.createElement('style');
+    s.id = 'layer-dnd-style';
+    s.textContent = '.layer-drop-target { background: var(--primary-light, #dbeafe) !important; outline: 2px dashed var(--primary) !important; }';
+    document.head.appendChild(s);
+  }
   lucide.createIcons();
+}
+
+// Toggle visibility tanpa re-render posisi (hanya update visual)
+function toggleLayerVisOnly(id) {
+  const l = mapLayers.find(x => x.id === id); if (!l) return;
+  l.visible = !l.visible;
+  l.visible ? l.layer.addTo(map) : map.removeLayer(l.layer);
+  dbUpsertMapLayer(l);
+  // Update hanya elemen ini, bukan re-render seluruh list
+  const items = document.querySelectorAll('#layer-list .layer-item');
+  items.forEach(item => {
+    const btn = item.querySelector('.lbtn');
+    const lbl = item.querySelector('.layer-lbl');
+    // Match by onclick attribute
+    if (btn && btn.getAttribute('onclick')?.includes(id)) {
+      btn.classList.toggle('active', l.visible);
+      const icon = btn.querySelector('i');
+      if (icon) { icon.setAttribute('data-lucide', l.visible ? 'eye' : 'eye-off'); lucide.createIcons(); }
+      if (lbl) { lbl.style.opacity = l.visible ? 1 : 0.5; lbl.style.textDecoration = l.visible ? '' : 'line-through'; }
+    }
+  });
+}
+
+async function dropLayerToGroup(cat, grp) {
+  if (!_dragLayerId) return;
+  const l = mapLayers.find(x => x.id === _dragLayerId);
+  _dragLayerId = null;
+  if (!l) return;
+  const newGrp = grp === '—' ? null : grp;
+  const oldCat = l.category || (l.type === 'path' ? 'jalur' : 'area');
+  if (l.type === 'path' && cat !== 'jalur') { toast('Jalur tidak bisa dipindah ke kategori lain', true); return; }
+  l.group_name = newGrp;
+  l.category = cat;
+  if (l.category !== oldCat) renderMapLayerShape(l);
+  await dbUpsertMapLayer(l);
+  renderLayerList();
+  toast(`Layer dipindah ke ${CATEGORY_LABELS[cat]}${newGrp ? ' › ' + newGrp : ''}`);
 }
 
 function toggleGroupCollapse(grp) {
@@ -3256,6 +3323,7 @@ function renderKavlingList() {
       </div>
     </div>
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <button onclick="bulkResizeTents()" style="font-size:11px;padding:5px 10px;border:1px solid var(--primary);background:transparent;border-radius:6px;cursor:pointer;color:var(--primary);font-weight:600">Seragamkan Ukuran</button>
       <button onclick="resetAllTents()" style="font-size:11px;padding:5px 10px;border:1px solid var(--red,#ef4444);background:transparent;border-radius:6px;cursor:pointer;color:var(--red,#ef4444);font-weight:600">Reset Semua Kavling</button>
     </div>
     ${list.map(t => {
@@ -3339,6 +3407,32 @@ async function resetTent(id) {
   t.status = 'available'; t.family = ''; t.members = 0; t.member_names = [];
   await dbUpsertTent(t); renderAllTents(); updateStats();
   toast(`Kavling ${id} direset`);
+  renderKavlingList();
+}
+
+async function bulkResizeTents() {
+  const sizes = ['3×3m','4×4m','4×6m','6×6m'];
+  const choice = await new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center';
+    ov.innerHTML = `
+      <div style="background:var(--canvas);border-radius:16px;padding:20px;width:280px">
+        <div style="font-size:15px;font-weight:700;margin-bottom:4px">Seragamkan Ukuran Kavling</div>
+        <div style="font-size:12px;color:var(--ink-muted);margin-bottom:14px">Pilih ukuran baru untuk semua kavling peserta</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${sizes.map(s => `<button onclick="this.closest('div[style*=fixed]')._resolve('${s}')" style="padding:10px;border:1px solid var(--hairline);border-radius:10px;background:var(--surface-1);cursor:pointer;font-size:14px;font-weight:700">${s}</button>`).join('')}
+          <button onclick="this.closest('div[style*=fixed]')._resolve(null)" style="padding:8px;border:none;background:transparent;cursor:pointer;font-size:12px;color:var(--ink-muted)">Batal</button>
+        </div>
+      </div>`;
+    ov._resolve = val => { document.body.removeChild(ov); resolve(val); };
+    document.body.appendChild(ov);
+  });
+  if (!choice) return;
+  const pesertaTents = tents.filter(t => t.type === 'peserta');
+  pesertaTents.forEach(t => { t.size = choice; });
+  await dbUpsertTents(pesertaTents);
+  renderAllTents();
+  toast(`✅ ${pesertaTents.length} kavling diubah ke ${choice}`);
   renderKavlingList();
 }
 
