@@ -4155,7 +4155,7 @@ function renderDataList() {
                <button onclick="event.stopPropagation();zoomToTent('${p.claimed_tent_id}')" style="flex:1;min-width:80px;padding:7px;border:1px solid var(--primary);background:transparent;border-radius:8px;cursor:pointer;color:var(--primary);font-size:12px">Lihat Peta</button>`
             : `<select onclick="event.stopPropagation()" onchange="adminAssignTent('${p.id}',this.value);this.value=''" style="flex:1;font-size:12px;padding:7px;border:1px solid var(--hairline);border-radius:8px;background:var(--canvas);color:var(--ink);cursor:pointer">
                 <option value="">Assign kavling…</option>
-                ${availTents.map(t => `<option value="${t.id}">${t.id} (${t.size})</option>`).join('')}
+                ${(p.role === 'panitia' ? availTentsPanitia : availTentsPeserta).map(t => `<option value="${t.id}">${t.id} (${t.size})</option>`).join('')}
                </select>`}
         </div>
         <div style="display:flex;gap:6px;margin-bottom:6px">
@@ -4185,7 +4185,7 @@ function renderDataList() {
 async function adminAssignTent(participantId, tentId) {
   if (!tentId) return;
   const t = tents.find(x => x.id === tentId);
-  const p = allParticipants.find(x => x.id === participantId);
+  const p = allParticipants.find(x => String(x.id) === String(participantId));
   if (!t || !p) return;
   if (t.status !== 'available') { toast('Kavling sudah terisi!', true); renderDataList(); return; }
   const expectedType = (p.role === 'panitia') ? 'panitia' : 'peserta';
@@ -4214,7 +4214,7 @@ async function adminAssignTent(participantId, tentId) {
 async function adminUnassignTent(participantId, tentId) {
   if (!confirm(`Lepas kavling ${tentId} dari peserta ini?`)) return;
   const t = tents.find(x => x.id === tentId);
-  const p = allParticipants.find(x => x.id === participantId);
+  const p = allParticipants.find(x => String(x.id) === String(participantId));
   if (t) { t.status = 'available'; t.family = null; t.members = null; await dbUpsertTent(t); }
   await dbUpdateParticipant(participantId, { claimed_tent_id: null });
   if (p) p.claimed_tent_id = null;
