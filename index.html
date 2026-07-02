@@ -2721,49 +2721,135 @@ function renderIncList() {
 // ══════════════════════════════════════════════
 function importCSV() { openOv('m-csv'); }
 
+let _csvParsed = [];
+
 function handleCSV(inp) {
   const file = inp.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
-    const lines = e.target.result.split('\n').filter(l=>l.trim());
-    const header = lines[0].toLowerCase();
-    const newFmt = header.includes('kavling_id') || header.includes('ukuran');
-    let imported = 0, skipped = 0;
+    const lines = e.target.result.split('\n').filter(l => l.trim());
+    if (lines.length < 2) { toast('File kosong atau format salah', true); return; }
 
-    lines.slice(1).forEach(line => {
-      if (!line.trim()) return;
-      const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g,''));
-      let tentId, fam, sz, memberNames;
+    const headerLine = lines[0].toLowerCase();
+    // Detect participant import: has 'code' or 'family_name' column
+    const isParticipantFmt = headerLine.includes('code') || headerLine.includes('family_name') || headerLine.includes('nama_keluarga');
 
-      if (newFmt) {
-        // Format baru: kavling_id, nama_keluarga, ukuran, anggota
-        [tentId, fam, sz, memberNames] = cols;
-      } else {
-        // Format lama: nama_keluarga, jumlah_anggota, kavling_id
-        [fam, , tentId] = cols;
-        sz = null; memberNames = '';
-      }
+    if (isParticipantFmt) {
+      // Parse participant CSV: code, family_name/nama_keluarga, members/anggota
+      _csvParsed = [];
+      lines.slice(1).forEach((line, i) => {
+        if (!line.trim()) return;
+        const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+        const code = (cols[0] || '').toUpperCase();
+        const familyName = cols[1] || '';
+        const members = parseInt(cols[2]) || 1;
+        if (code && familyName) _csvParsed.push({ code, family_name: familyName, members });
+      });
 
-      const t = tents.find(x => x.id === tentId);
-      if (!t) { skipped++; return; }
+      const prev = document.getElementById('csv-preview');
+      if (!_csvParsed.length) { prev.innerHTML = '<div style="color:var(--danger);font-size:13px">Tidak ada data valid ditemukan.</div>'; return; }
 
-      t.family = fam || t.family;
-      if (sz && sz !== 'bawa-sendiri') t.size = sz.replace('x','×').replace(/m?$/,'m');
-      const names = (memberNames || '').split('|').map(s=>s.trim()).filter(Boolean);
-      t.members = names.length || t.members || 1;
-      t.member_names = names;
-      t.status = fam ? 'occupied' : t.status;
-      imported++;
-    });
+      let rows = _csvParsed.slice(0, 5).map(p =>
+        `<tr><td style="padding:4px 8px">${p.code}</td><td style="padding:4px 8px">${p.family_name}</td><td style="padding:4px 8px;text-align:center">${p.members}</td></tr>`
+      ).join('');
+      const more = _csvParsed.length > 5 ? `<tr><td colspan="3" style="padding:4px 8px;color:var(--ink-muted);font-size:11px">...dan ${_csvParsed.length - 5} lainnya</td></tr>` : '';
 
-    const changed = tents.filter(t => t.status === 'occupied');
-    dbUpsertTents(changed); renderAllTents(); updateStats();
-    const msg = `✓ ${imported} kavling diimport${skipped ? `, ${skipped} ID tidak ditemukan` : ''}`;
-    document.getElementById('csv-preview').innerHTML = `<div class="badge badge-g">${msg}</div>`;
-    toast(`📥 ${msg}`);
+      prev.innerHTML = `
+        <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--ink-muted)">${_csvParsed.length} peserta ditemukan — preview:</div>
+        <div style="overflow:auto;max-height:160px;border:1px solid var(--hairline);border-radius:8px;margin-bottom:12px">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="background:var(--surface-1)"><th style="padding:4px 8px;text-align:left">Kode</th><th style="padding:4px 8px;text-align:left">Nama Keluarga</th><th style="padding:4px 8px">Anggota</th></tr></thead>
+            <tbody>${rows}${more}</tbody>
+          </table>
+        </div>
+        <button onclick="confirmCSVImport()" style="width:100%;padding:10px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Konfirmasi Import ${_csvParsed.length} Peserta</button>
+      `;
+    } else {
+      // Tent/kavling import (format lama: kavling_id, nama_keluarga, ukuran, anggota)
+      _csvParsed = [];
+      lines.slice(1).forEach(line => {
+        if (!line.trim()) return;
+        const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+        const [tentId, fam, sz, memberNames] = cols;
+        _csvParsed.push({ tentId, fam, sz, memberNames });
+      });
+
+      const prev = document.getElementById('csv-preview');
+      if (!_csvParsed.length) { prev.innerHTML = '<div style="color:var(--danger);font-size:13px">Tidak ada data valid.</div>'; return; }
+
+      let rows = _csvParsed.slice(0, 5).map(p =>
+        `<tr><td style="padding:4px 8px">${p.tentId}</td><td style="padding:4px 8px">${p.fam}</td></tr>`
+      ).join('');
+      const more = _csvParsed.length > 5 ? `<tr><td colspan="2" style="padding:4px 8px;color:var(--ink-muted);font-size:11px">...dan ${_csvParsed.length - 5} lainnya</td></tr>` : '';
+
+      prev.innerHTML = `
+        <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--ink-muted)">${_csvParsed.length} kavling ditemukan — preview:</div>
+        <div style="overflow:auto;max-height:160px;border:1px solid var(--hairline);border-radius:8px;margin-bottom:12px">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="background:var(--surface-1)"><th style="padding:4px 8px;text-align:left">Kavling</th><th style="padding:4px 8px;text-align:left">Keluarga</th></tr></thead>
+            <tbody>${rows}${more}</tbody>
+          </table>
+        </div>
+        <button onclick="confirmCSVImportTents()" style="width:100%;padding:10px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Konfirmasi Import ${_csvParsed.length} Kavling</button>
+      `;
+    }
   };
   reader.readAsText(file);
+}
+
+async function confirmCSVImport() {
+  if (!_csvParsed.length) return;
+  const btn = document.querySelector('#csv-preview button');
+  if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan...'; }
+
+  const rows = _csvParsed.map(p => ({ code: p.code, family_name: p.family_name, members: p.members }));
+  const { error } = await sb.from('participants').upsert(rows, { onConflict: 'code' });
+
+  if (error) {
+    toast('Gagal import: ' + error.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = 'Coba Lagi'; }
+    return;
+  }
+
+  toast(`✅ ${rows.length} peserta berhasil diimport!`);
+  closeOv('m-csv');
+  document.getElementById('csv-preview').innerHTML = '';
+  document.getElementById('csv-inp').value = '';
+  _csvParsed = [];
+  // Refresh data page if open
+  if (document.getElementById('m-data').classList.contains('show')) {
+    allParticipants = await dbLoadAllParticipants();
+    renderDataStats(); renderDataList();
+  }
+}
+
+async function confirmCSVImportTents() {
+  if (!_csvParsed.length) return;
+  const btn = document.querySelector('#csv-preview button');
+  if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan...'; }
+
+  let imported = 0, skipped = 0;
+  _csvParsed.forEach(({ tentId, fam, sz, memberNames }) => {
+    const t = tents.find(x => x.id === tentId);
+    if (!t) { skipped++; return; }
+    t.family = fam || t.family;
+    if (sz && sz !== 'bawa-sendiri') t.size = sz.replace('x', '×').replace(/m?$/, 'm');
+    const names = (memberNames || '').split('|').map(s => s.trim()).filter(Boolean);
+    t.members = names.length || t.members || 1;
+    t.member_names = names;
+    t.status = fam ? 'occupied' : t.status;
+    imported++;
+  });
+
+  const changed = tents.filter(t => t.status === 'occupied');
+  await dbUpsertTents(changed); renderAllTents(); updateStats();
+  const msg = `✓ ${imported} kavling diimport${skipped ? `, ${skipped} ID tidak ditemukan` : ''}`;
+  toast(`📥 ${msg}`);
+  closeOv('m-csv');
+  document.getElementById('csv-preview').innerHTML = '';
+  document.getElementById('csv-inp').value = '';
+  _csvParsed = [];
 }
 
 // ══════════════════════════════════════════════
