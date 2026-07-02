@@ -1400,9 +1400,14 @@ function showBSheet(t) {
   document.getElementById('bs-cap').textContent = t.capacity + 'P';
   document.getElementById('bs-sz').textContent  = t.size;
   document.getElementById('bs-fac').textContent = t.facilities;
-  const avail = t.status === 'available' && t.type !== 'panitia';
+  const alreadyClaimed = participantData && participantData.claimed_tent_id && participantData.claimed_tent_id !== t.id;
+  const avail = t.status === 'available' && t.type !== 'panitia' && !alreadyClaimed;
   document.getElementById('bs-avail').style.display  = avail ? 'block' : 'none';
   document.getElementById('bs-taken').style.display  = avail ? 'none' : 'block';
+  if (alreadyClaimed && t.status === 'available') {
+    document.getElementById('bs-occ-name').textContent = `Kamu sudah punya kavling ${participantData.claimed_tent_id}`;
+    document.getElementById('bs-occ-mem').textContent = '';
+  } else
   if (!avail) {
     document.getElementById('bs-occ-name').textContent = (mode === 'public') ? 'Terisi' : (t.family || 'Panitia SFC3');
     document.getElementById('bs-occ-mem').textContent  = (mode === 'public') ? '' : (t.members ? t.members + ' anggota' : '');
@@ -1424,14 +1429,40 @@ async function claimTent() {
   const fam = participantData ? participantData.family_name : document.getElementById('bs-fam').value.trim();
   const mbr = participantData ? participantData.members : (parseInt(document.getElementById('bs-mbr').value) || 1);
   if (!fam) { toast('Masukkan nama keluarga terlebih dahulu', true); return; }
+
+  // Blokir double claim
+  if (participantData && participantData.claimed_tent_id) {
+    toast(`Kamu sudah memiliki kavling ${participantData.claimed_tent_id}!`, true);
+    closeBSheet();
+    return;
+  }
+
   const t = tents.find(x => x.id === selTentId);
-  if (!t || t.status !== 'available') { toast('Kavling sudah diambil orang lain!', true); return; }
+  if (!t) return;
+
+  // Race condition: re-cek status dari DB sebelum claim
+  const { data: fresh } = await sb.from('tents').select('status,family').eq('id', t.id).maybeSingle();
+  if (!fresh || fresh.status !== 'available') {
+    toast('⚡ Kavling baru saja diambil orang lain! Pilih yang lain.', true);
+    t.status = fresh?.status || 'occupied';
+    t.family = fresh?.family || null;
+    closeBSheet();
+    renderAllTents();
+    return;
+  }
+
   t.status = 'occupied'; t.family = fam; t.members = mbr;
-  if (participantData) await dbUpdateParticipant(participantData.id, { claimed_tent_id: t.id });
+  if (participantData) {
+    participantData.claimed_tent_id = t.id;
+    await dbUpdateParticipant(participantData.id, { claimed_tent_id: t.id });
+  }
+  await dbUpsertTent(t);
   closeBSheet();
   renderAllTents();
-  await dbUpsertTent(t);
-  toast(`Kavling ${t.id} berhasil dipilih oleh ${fam}!`);
+
+  // Zoom ke tenda yang baru dipilih
+  setTimeout(() => map.setView([t.lat, t.lon], 20, { animate: true }), 200);
+  toast(`🎉 Kavling ${t.id} berhasil dipilih! Selamat, ${fam}!`);
 }
 
 // ══════════════════════════════════════════════
@@ -2330,12 +2361,15 @@ function renderLayerList() {
 
   el.innerHTML = Object.entries(grouped).map(([grp, layers]) => {
     const isCollapsed = collapsedGroups.has(grp);
+    const allVisible = layers.every(l => l.visible);
+    const anyVisible = layers.some(l => l.visible);
     return `
     <div style="margin-bottom:4px">
-      <div onclick="toggleGroupCollapse('${grp}')" style="display:flex;align-items:center;gap:5px;padding:4px 6px;cursor:pointer;border-radius:6px;background:var(--surface-1);margin-bottom:2px">
-        <span style="font-size:9px;transition:transform .2s;display:inline-block;transform:rotate(${isCollapsed?'-90':'0'}deg)">▼</span>
-        <span style="font-size:11px;font-weight:600;color:var(--ink-muted);flex:1">${grp}</span>
+      <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:6px;background:var(--surface-1);margin-bottom:2px">
+        <span onclick="toggleGroupCollapse('${grp}')" style="font-size:9px;transition:transform .2s;display:inline-block;transform:rotate(${isCollapsed?'-90':'0'}deg);cursor:pointer;padding:2px">▼</span>
+        <span onclick="toggleGroupCollapse('${grp}')" style="font-size:11px;font-weight:600;color:var(--ink-muted);flex:1;cursor:pointer">${grp}</span>
         <span style="font-size:10px;color:var(--ink-muted)">${layers.length}</span>
+        <button class="lbtn ${anyVisible?'active':''}" onclick="toggleGroupVis('${grp}',${allVisible})" title="${allVisible?'Sembunyikan grup':'Tampilkan grup'}"><i data-lucide="eye${allVisible?'':'-off'}" class="lucide" style="width:13px;height:13px"></i></button>
       </div>
       ${isCollapsed ? '' : layers.map(renderItem).join('')}
     </div>`;
@@ -2345,6 +2379,16 @@ function renderLayerList() {
 
 function toggleGroupCollapse(grp) {
   collapsedGroups.has(grp) ? collapsedGroups.delete(grp) : collapsedGroups.add(grp);
+  renderLayerList();
+}
+
+function toggleGroupVis(grp, allVisible) {
+  const layers = mapLayers.filter(l => (l.group_name || '—') === grp);
+  layers.forEach(l => {
+    l.visible = !allVisible;
+    l.visible ? l.layer.addTo(map) : map.removeLayer(l.layer);
+    dbUpsertMapLayer(l);
+  });
   renderLayerList();
 }
 
@@ -2783,7 +2827,20 @@ async function doPesertaLogin() {
   const mnl = document.getElementById('mnav-peserta-lbl');
   if (mnl) mnl.textContent = p.family_name.split(' ')[0];
   applyMode('peserta');
-  toast('Selamat datang, ' + p.family_name + '!');
+
+  // Jika sudah punya tenda, zoom ke tenda & highlight
+  if (p.claimed_tent_id) {
+    const t = tents.find(x => x.id === p.claimed_tent_id);
+    if (t) {
+      setTimeout(() => {
+        map.setView([t.lat, t.lon], 20, { animate: true });
+        selectTent(t.id);
+      }, 400);
+      toast(`Selamat datang kembali, ${p.family_name}! Tenda kamu: ${p.claimed_tent_id}`);
+      return;
+    }
+  }
+  toast('Selamat datang, ' + p.family_name + '! Pilih kavling tersedia di peta.');
 }
 
 function doPesertaLogout() {
