@@ -544,6 +544,7 @@
 
     <button class="map-fab" onclick="centerMap()" title="Pusatkan ke Area Camp"><i data-lucide="crosshair" class="lucide" style="width:20px;height:20px"></i></button>
     <button class="map-fab" onclick="locateMe()" title="Pusatkan ke lokasi saya" style="bottom:124px"><i data-lucide="map-pin" class="lucide" style="width:18px;height:18px"></i></button>
+    <button id="btn-tile-toggle" class="map-fab" onclick="cycleTileLayer()" title="Ganti ke: Peta" style="bottom:186px;background:var(--surface-1);color:var(--ink);border:1px solid var(--hairline)"><i data-lucide="layers" class="lucide" style="width:20px;height:20px"></i></button>
   </div>
 
   <!-- Right Detail Panel -->
@@ -1133,13 +1134,35 @@ const POIS = [
 // ══════════════════════════════════════════════
 //   MAP INIT
 // ══════════════════════════════════════════════
+const TILE_LAYERS = [
+  { id:'satelit', label:'Satelit', url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr:'Tiles &copy; Esri', maxNative:19 },
+  { id:'osm',     label:'Peta',    url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attr:'&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>', maxNative:19 },
+  { id:'topo',    label:'Topo',    url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', attr:'Tiles &copy; Esri', maxNative:19 },
+];
+let currentTileIdx = 0;
+let currentTileLayer = null;
+
+function applyTileLayer(idx) {
+  currentTileIdx = idx;
+  const t = TILE_LAYERS[idx];
+  if (currentTileLayer) map.removeLayer(currentTileLayer);
+  currentTileLayer = L.tileLayer(t.url, { attribution: t.attr, maxZoom:21, maxNativeZoom:t.maxNative });
+  currentTileLayer.addTo(map);
+  currentTileLayer.bringToBack();
+  const btn = document.getElementById('btn-tile-toggle');
+  const next = TILE_LAYERS[(idx + 1) % TILE_LAYERS.length];
+  if (btn) btn.title = 'Ganti ke: ' + next.label;
+}
+
+function cycleTileLayer() {
+  applyTileLayer((currentTileIdx + 1) % TILE_LAYERS.length);
+  toast('Mode peta: ' + TILE_LAYERS[currentTileIdx].label);
+}
+
 async function initMap() {
   map = L.map('map', { zoomControl:false }).setView(CAMP_CENTER, CAMP_ZOOM);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution:'© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom:21, maxNativeZoom:19
-  }).addTo(map);
+  applyTileLayer(0); // default: satelit
 
   L.control.zoom({ position:'topright' }).addTo(map);
 
