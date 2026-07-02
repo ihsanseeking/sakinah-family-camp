@@ -745,16 +745,13 @@
 
 <!-- Assign Peserta -->
 <div class="ov" id="m-assign">
-  <div class="modal">
+  <div class="modal" style="max-width:460px;width:100%;max-height:90vh;display:flex;flex-direction:column">
     <button class="modal-close" onclick="closeOv('m-assign')">✕</button>
-    <div class="modal-title"><i data-lucide="user-plus" class="lucide" style="width:20px;height:20px"></i> Assign Peserta</div>
-    <input type="hidden" id="assign-id">
-    <div class="fg"><label>Nama Keluarga</label><input class="fi" id="assign-fam" placeholder="Keluarga Budi Santoso"></div>
-    <div class="fg"><label>Jumlah Anggota</label><input class="fi" id="assign-mbr" type="number" min="1" max="12" placeholder="4"></div>
-    <div class="btn-row mt8">
-      <button class="btn btn-gh" onclick="closeOv('m-assign')">Batal</button>
-      <button class="btn btn-p" onclick="doAssign()"><i data-lucide="check" class="lucide"></i> Simpan</button>
-    </div>
+    <div class="modal-title"><i data-lucide="user-plus" class="lucide" style="width:20px;height:20px"></i> Assign ke Kavling <span id="assign-tent-label" style="color:var(--primary)"></span></div>
+    <div id="assign-tent-info" style="font-size:12px;color:var(--ink-muted);margin-bottom:10px"></div>
+    <input id="assign-search" class="fi" placeholder="Cari nama keluarga / voucher…" oninput="renderAssignList()" style="margin-bottom:10px">
+    <div id="assign-list" style="flex:1;overflow-y:auto;min-height:100px;max-height:55vh;border:1px solid var(--hairline);border-radius:10px"></div>
+    <button class="btn btn-gh btn-w mt8" onclick="closeOv('m-assign')">Tutup</button>
   </div>
 </div>
 
@@ -1879,25 +1876,69 @@ async function saveTentEdit() {
   toast('Kavling diperbarui');
 }
 
-function openAssignModal() {
+async function openAssignModal() {
   const t = tents.find(x => x.id === selTentId);
   if (!t) return;
-  document.getElementById('assign-id').value    = t.id;
-  document.getElementById('assign-fam').value   = t.family || '';
-  document.getElementById('assign-mbr').value   = t.members || '';
+  if (t.status === 'occupied') { toast('Kavling sudah terisi! Reset dulu sebelum assign ulang.', true); return; }
+
+  // Muat peserta jika belum ada
+  if (!allParticipants.length) allParticipants = await dbLoadAllParticipants();
+
+  document.getElementById('assign-tent-label').textContent = t.id;
+  const typeLabel = t.type === 'panitia' ? 'Panitia' : 'Peserta';
+  document.getElementById('assign-tent-info').textContent =
+    `${typeLabel} · ${t.size} · Kapasitas ${t.capacity}P — Pilih ${typeLabel.toLowerCase()} yang belum punya kavling`;
+  document.getElementById('assign-search').value = '';
+  renderAssignList();
   openOv('m-assign');
 }
 
-async function doAssign() {
-  const id  = document.getElementById('assign-id').value;
-  const t   = tents.find(x => x.id === id);
-  if (!t) return;
-  t.family  = document.getElementById('assign-fam').value;
-  t.members = parseInt(document.getElementById('assign-mbr').value) || 1;
-  t.status  = 'occupied';
-  renderAllTents(); closeOv('m-assign'); showDetailPanel(t);
-  await dbUpsertTent(t);
-  toast(`Peserta di-assign ke kavling ${t.id}`);
+function renderAssignList() {
+  const t = tents.find(x => x.id === selTentId); if (!t) return;
+  const q = (document.getElementById('assign-search')?.value || '').toLowerCase();
+  const expectedRole = t.type === 'panitia' ? 'panitia' : 'peserta';
+
+  const candidates = allParticipants.filter(p => {
+    const roleMatch = expectedRole === 'panitia' ? p.role === 'panitia' : p.role !== 'panitia';
+    const noTent    = !p.claimed_tent_id;
+    const nameMatch = !q || p.family_name.toLowerCase().includes(q) || (p.code||'').toLowerCase().includes(q);
+    return roleMatch && noTent && nameMatch;
+  });
+
+  const el = document.getElementById('assign-list'); if (!el) return;
+  if (!candidates.length) {
+    el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--ink-muted);font-size:13px">
+      ${q ? 'Tidak ditemukan' : `Semua ${expectedRole} sudah punya kavling`}</div>`;
+    return;
+  }
+
+  el.innerHTML = candidates.map(p => {
+    const memberCount = p.members || 0;
+    const names = typeof p.member_names === 'string'
+      ? p.member_names.split('|').filter(Boolean)
+      : (Array.isArray(p.member_names) ? p.member_names : []);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--hairline)">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+          <span style="font-size:11px;font-family:monospace;font-weight:700;color:var(--primary)">${p.code}</span>
+          ${p.role === 'panitia' ? '<span style="font-size:10px;background:var(--blue);color:#fff;padding:1px 5px;border-radius:8px">Panitia</span>' : ''}
+        </div>
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.family_name}</div>
+        <div style="font-size:11px;color:var(--ink-muted)">${memberCount} anggota${names.length ? ' · ' + names.slice(0,2).join(', ') + (names.length > 2 ? ' +' + (names.length-2) : '') : ''}</div>
+      </div>
+      <button onclick="doAssignFromMap('${p.id}','${selTentId}')"
+        style="padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0">
+        Assign ▶
+      </button>
+    </div>`;
+  }).join('');
+}
+
+async function doAssignFromMap(participantId, tentId) {
+  await adminAssignTent(participantId, tentId);
+  closeOv('m-assign');
+  const t = tents.find(x => x.id === tentId);
+  if (t) showDetailPanel(t);
 }
 
 function showSwapFromDetail() { showSwap(); }
