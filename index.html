@@ -1135,20 +1135,30 @@ const POIS = [
 //   MAP INIT
 // ══════════════════════════════════════════════
 const TILE_LAYERS = [
-  { id:'satelit', label:'Satelit', url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr:'Tiles &copy; Esri', maxNative:19 },
-  { id:'osm',     label:'Peta',    url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attr:'&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>', maxNative:19 },
-  { id:'topo',    label:'Topo',    url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', attr:'Tiles &copy; Esri', maxNative:19 },
+  { id:'satelit', label:'Satelit',       url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr:'Tiles &copy; Esri', maxNative:19 },
+  { id:'hybrid',  label:'Satelit+Label', url:'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', attr:'Tiles &copy; Esri', maxNative:19, base:'satelit' },
+  { id:'osm',     label:'Peta',          url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attr:'&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>', maxNative:19 },
 ];
 let currentTileIdx = 0;
-let currentTileLayer = null;
+let currentTileLayers = [];
 
 function applyTileLayer(idx) {
   currentTileIdx = idx;
   const t = TILE_LAYERS[idx];
-  if (currentTileLayer) map.removeLayer(currentTileLayer);
-  currentTileLayer = L.tileLayer(t.url, { attribution: t.attr, maxZoom:21, maxNativeZoom:t.maxNative });
-  currentTileLayer.addTo(map);
-  currentTileLayer.bringToBack();
+  currentTileLayers.forEach(l => map.removeLayer(l));
+  currentTileLayers = [];
+  if (t.base === 'satelit') {
+    // hybrid: satelit base + label overlay
+    const base = L.tileLayer(TILE_LAYERS[0].url, { attribution: t.attr, maxZoom:21, maxNativeZoom:19 });
+    const labels = L.tileLayer(t.url, { maxZoom:21, maxNativeZoom:19, opacity:1 });
+    base.addTo(map); base.bringToBack();
+    labels.addTo(map);
+    currentTileLayers = [base, labels];
+  } else {
+    const layer = L.tileLayer(t.url, { attribution: t.attr, maxZoom:21, maxNativeZoom:t.maxNative });
+    layer.addTo(map); layer.bringToBack();
+    currentTileLayers = [layer];
+  }
   const btn = document.getElementById('btn-tile-toggle');
   const next = TILE_LAYERS[(idx + 1) % TILE_LAYERS.length];
   if (btn) btn.title = 'Ganti ke: ' + next.label;
